@@ -2,15 +2,22 @@
 
 use std::str::FromStr;
 
+use pest::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::{JsltError, Result};
+use crate::{
+  error::{JsltError, Result},
+  parser::{FromParis, JsltBuilder, JsltParser, Rule, Transform},
+};
 
 pub mod error;
 pub mod parser;
 
-pub struct Jslt;
+#[derive(Debug)]
+pub struct Jslt {
+  builder: JsltBuilder,
+}
 
 impl Jslt {
   pub fn transform<S, T>(&self, input: &T) -> Result<S>
@@ -24,21 +31,24 @@ impl Jslt {
 
   /// Apply the jslt transformation
   pub fn transform_value(&self, input: &Value) -> Result<Value> {
-    Ok(input.clone())
+    self.builder.transform_value(input)
   }
 }
 
 impl FromStr for Jslt {
   type Err = JsltError;
 
-  fn from_str(_: &str) -> Result<Self> {
-    Ok(Jslt)
+  fn from_str(value: &str) -> Result<Self> {
+    let mut pairs = JsltParser::parse(Rule::Jslb, value).map_err(Box::new)?;
+    let builder = JsltBuilder::from_pairs(&mut pairs)?;
+
+    Ok(Jslt { builder })
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use std::sync::LazyLock;
+  use std::{ops::Deref, sync::LazyLock};
 
   use serde_json::json;
 
@@ -57,7 +67,11 @@ mod tests {
             }
           ]
         }
-      }
+      },
+      "data": [
+        [1, 2, 3, 4, 5],
+        [6, 7, 8, 9, 10]
+      ]
     })
   });
 
@@ -73,7 +87,6 @@ mod tests {
   use super::*;
 
   #[test]
-  #[ignore]
   fn basic() -> Result<()> {
     let jslt: Jslt = r#"
     {
@@ -87,7 +100,92 @@ mod tests {
 
     let output = jslt.transform_value(&BASIC_INPUT)?;
 
-    assert_eq!(&output, &*BASIC_OUTPUT);
+    assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
+  #[test]
+  fn object_for() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "result" : {for (.menu.popup.menuitem)
+        .value : .onclick
+      }
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
+  #[test]
+  fn nested_data() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "result" : [
+        .data[0][0],
+        .data[1][0]
+      ]
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, json!({ "result": [1, 6] }));
+
+    Ok(())
+  }
+
+  #[test]
+  fn array_range() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "result" : .data[0][0:3]
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, json!({ "result": [1, 2, 3] }));
+
+    Ok(())
+  }
+
+  #[test]
+  fn array_for_range() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "result" : [ 
+        for ( .data ) 
+          { "values": .[2:4], "active": true, "deletedAt": null }
+      ]
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(
+      output,
+      json!({
+        "result": [{
+          "active": true,
+          "values": [3, 4],
+          "deletedAt": Value::Null
+        }, {
+          "active": true,
+          "values": [8, 9],
+          "deletedAt": Value::Null
+        }]
+      })
+    );
 
     Ok(())
   }

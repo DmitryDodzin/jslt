@@ -1,20 +1,22 @@
+use serde_json::Value;
 use thiserror::Error;
 
-use crate::parser::Span;
+use crate::parser::Rule;
 
 pub type Result<T, E = JsltError> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
 pub enum JsltError {
-  #[error("There isn't a vaild start delimiter, expecting '{{' or '[' or '\"'")]
-  InvalidStart,
-
-  #[error("InvalidToken: there is an invalid token ({0:?}) at {1:?}")]
-  InvalidToken(String, Span),
-
-  #[error("UnexpectedToken: expected {1:?} but got {0:?}")]
-  UnexpectedToken(String, &'static str),
-
+  #[error("UnexpectedInput: {0:?} ({1})")]
+  UnexpectedInput(Rule, String),
+  #[error("UnexpectedContent: for {0:?}")]
+  UnexpectedContent(Rule),
+  #[error(transparent)]
+  Pest(#[from] Box<pest::error::Error<Rule>>),
+  #[error("Expecting Number for ranged access but got {0:?}")]
+  RangeNotNumber(Value),
+  #[error("Could not fit index into u64")]
+  IndexOutOfRange,
   #[error(transparent)]
   SerdeJson(#[from] serde_json::Error),
 }

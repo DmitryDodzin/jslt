@@ -1,11 +1,7 @@
-mod lexer;
+mod builder;
 
-pub use lexer::*;
+pub use builder::*;
 
-use crate::error::Result;
-
-pub trait Parse<'s>: Sized {
-  fn parse<T>(tokens: &mut T) -> Result<Self>
-  where
-    T: Iterator<Item = Result<SpannedToken<'s>>>;
-}
+#[derive(pest_derive::Parser)]
+#[grammar = "./src/parser/jslt.pest"]
+pub struct JsltParser;

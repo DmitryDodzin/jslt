@@ -1,0 +1,53 @@
+Jslb = _{ SOI ~ Expr ~ EOI }
+
+Value = _{ Array | Object | Number | String | Boolean | Null }
+
+Expr = _{ Value | Accessor }
+
+Accessor = {
+    "." ~ Ident? ~ KeyAccessor* ~ Accessor?
+}
+KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
+RangeAccessor = { Expr ~ ":" ~ Expr }
+
+Ident = @{ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+
+Array    = {
+    "[" ~ "]"
+  | "[" ~ (Expr | ArrayFor) ~ ("," ~ (Expr | ArrayFor))* ~ "]"
+}
+ArrayFor = {
+    "for" ~ "(" ~ Expr ~ ")" ~ Expr
+}
+
+Object    = {
+    "{" ~ "}"
+  | "{" ~ (Pair | ObjectFor) ~ ("," ~ (Pair | ObjectFor))* ~ "}"
+}
+ObjectFor = {
+    "for" ~ "(" ~ Expr ~ ")" ~ Pair
+}
+
+Pair = {
+    Expr ~ ":" ~ Expr
+}
+
+String = ${ "\"" ~ Inner ~ "\"" }
+Inner  = @{ Char* }
+Char   =  {
+    !("\"" | "\\") ~ ANY
+  | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+  | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+Number = @{
+    "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+Boolean = { "true" | "false" }
+
+Null = { "null" }
+
+COMMENT = { "//" ~ Inner ~ ("\n" | "\r" | "\r\n")? }
+
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
