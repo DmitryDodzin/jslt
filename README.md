@@ -8,17 +8,18 @@ Rust port for Schibsted's [jslt](https://github.com/schibsted/jslt#jslt)
 use jslt::Jslt;
 use serde_json::json;
 
-let jslt: Jslt = r#"
-{
-  "result" : {for (.menu.popup.menuitem)
-    .value : .onclick
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  let jslt: Jslt = r#"
+  {
+    "result" : {
+      for (.menu.popup.menuitem)
+        .value : .onclick
+    }
   }
-}
-"#
-.parse()?;
+  "#
+  .parse()?;
 
-let output = jslt.transform_value(
-  &json!({
+  let input = json!({
     "menu": {
       "popup": {
         "menuitem": [
@@ -33,18 +34,22 @@ let output = jslt.transform_value(
         ]
       }
     }
-  })
-)?;
+  });
 
-assert_eq!(
-  output, 
-  json!({
-    "result" : {
-      "Open" : "OpenDoc()",
-      "Close" : "CloseDoc()"
-    }
-  })
-);
+  let output = jslt.transform_value(&input)?;
+
+  assert_eq!(
+    output,
+    json!({
+      "result" : {
+        "Open" : "OpenDoc()",
+        "Close" : "CloseDoc()"
+      }
+    })
+  );
+
+  Ok(())
+}
 ```
 
 ## Status: POC
