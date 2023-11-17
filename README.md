@@ -4,6 +4,49 @@
 
 Rust port for Schibsted's [jslt](https://github.com/schibsted/jslt#jslt)
 
+```rust
+use jslt::Jslt;
+use serde_json::json;
+
+let jslt: Jslt = r#"
+{
+  "result" : {for (.menu.popup.menuitem)
+    .value : .onclick
+  }
+}
+"#
+.parse()?;
+
+let output = jslt.transform_value(
+  &json!({
+    "menu": {
+      "popup": {
+        "menuitem": [
+          {
+            "value": "Open",
+            "onclick": "OpenDoc()"
+          },
+          {
+            "value": "Close",
+            "onclick": "CloseDoc()"
+          }
+        ]
+      }
+    }
+  })
+)?;
+
+assert_eq!(
+  output, 
+  json!({
+    "result" : {
+      "Open" : "OpenDoc()",
+      "Close" : "CloseDoc()"
+    }
+  })
+);
+```
+
 ## Status: POC
 
 There is very minial support for selectors, constants and for loops and no garantee this will continue any further in the current phase.
