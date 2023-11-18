@@ -94,15 +94,96 @@ static_function! {
   }
 }
 
+pub fn fallback(arguments: &[Value]) -> Result<Value> {
+  for argument in arguments {
+    if !(matches!(argument, Value::Null)
+      || matches!(argument, Value::Array(items) if items.is_empty())
+      || matches!(argument, Value::Object(items) if items.is_empty()))
+    {
+      return Ok(argument.clone());
+    }
+  }
+
+  Ok(Value::Null)
+}
+
 static_function! {
-  pub fn min(_left: &Value, _right: &Value) -> Result<Value> {
-    todo!()
+  pub fn min(left: &Value, right: &Value) -> Result<Value> {
+    match (left, right) {
+      (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
+        left
+          .as_u64()
+          .expect("should be u64")
+          .min(right.as_u64().expect("should be u64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
+        left
+          .as_i64()
+          .expect("should be i64")
+          .min(right.as_i64().expect("should be i64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) if left.is_f64() && right.is_f64() => Ok(
+        left
+          .as_f64()
+          .expect("should be f64")
+          .min(right.as_f64().expect("should be f64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) => {
+        if left.as_f64() < right.as_f64() {
+          Ok(Value::Number(left.clone()))
+        } else {
+          Ok(Value::Number(right.clone()))
+        }
+      }
+      (Value::String(left), Value::String(right)) => Ok(Value::String(left.min(right).to_string())),
+      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(format!(
+        "Unimplemented operation min between ({left} and {right})"
+      ))),
+    }
   }
 }
 
 static_function! {
-  pub fn max(_left: &Value, _right: &Value) -> Result<Value> {
-    todo!()
+  pub fn max(left: &Value, right: &Value) -> Result<Value> {
+    match (left, right) {
+      (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
+        left
+          .as_u64()
+          .expect("should be u64")
+          .max(right.as_u64().expect("should be u64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
+        left
+          .as_i64()
+          .expect("should be i64")
+          .max(right.as_i64().expect("should be i64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) if left.is_f64() && right.is_f64() => Ok(
+        left
+          .as_f64()
+          .expect("should be f64")
+          .max(right.as_f64().expect("should be f64"))
+          .into(),
+      ),
+      (Value::Number(left), Value::Number(right)) => {
+        if left.as_f64() > right.as_f64() {
+          Ok(Value::Number(left.clone()))
+        }  else {
+          Ok(Value::Number(right.clone()))
+        }
+      }
+      (Value::String(left), Value::String(right)) => Ok(Value::String(left.max(right).to_string())),
+      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(format!(
+        "Unimplemented operation max between ({left} and {right})"
+      ))),
+    }
   }
 }
 
@@ -324,16 +405,16 @@ static_function! {
 }
 
 static_function! {
-  pub fn is_boolean(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn is_boolean(maybe_boolean: &Value) -> Result<Value> {
+    Ok(Value::Bool(matches!(maybe_boolean, Value::Bool(_))))
   }
 }
 
 // Object
 
 static_function! {
-  pub fn is_object(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn is_object(maybe_object: &Value) -> Result<Value> {
+    Ok(Value::Bool(matches!(maybe_object, Value::Object(_))))
   }
 }
 
@@ -352,8 +433,8 @@ static_function! {
 }
 
 static_function! {
-  pub fn is_array(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn is_array(maybe_array: &Value) -> Result<Value> {
+    Ok(Value::Bool(matches!(maybe_array, Value::Array(_))))
   }
 }
 

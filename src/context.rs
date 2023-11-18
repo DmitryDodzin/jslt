@@ -48,6 +48,7 @@ impl Default for JsltContext {
     include_builtin!(functions, contains);
     include_builtin!(functions, size);
     include_builtin!(functions, error);
+    include_builtin!(functions, fallback);
     include_builtin!(functions, min);
     include_builtin!(functions, max);
     include_builtin!(functions, is_number, "is-number");

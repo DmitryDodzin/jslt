@@ -204,22 +204,138 @@ mod tests {
   }
 
   #[rstest]
-  #[case::contains("contains(., [1, 2, 3])", "null", "false")]
-  #[case::contains("contains(., [1, 2, 3])", "1", "true")]
-  #[case::contains("contains(., [1, 2, 3])", "0", "false")]
-  #[case::contains("contains(., {\"no\" : false})", "\"no\"", "true")]
-  #[case::contains("contains(., {\"1\" : false})", "1", "true")]
-  #[case::contains("contains(., \"abc\")", "\"ab\"", "true")]
-  #[case::size("size(.)", "[1, 2, 3]", "3")]
-  #[case::size("size(.)", "{\"1\" : 3}", "1")]
-  #[case::size("size(.)", "\"abcdef\"", "6")]
-  #[case::size("size(.)", "null", "null")]
-  fn function_call(
-    #[case] template: &str,
-    #[case] input: Value,
+  #[case("null", "[1, 2, 3]", "false")]
+  #[case("1", "[1, 2, 3]", "true")]
+  #[case("0", "[1, 2, 3]", "false")]
+  #[case("\"no\"", "{\"no\" : false}", "true")]
+  #[case("1", "{\"1\" : false}", "true")]
+  #[case("\"ab\"", "\"abc\"", "true")]
+  fn function_contains(
+    #[case] left: Value,
+    #[case] right: Value,
     #[case] expected: Value,
   ) -> Result<()> {
-    let jslt: Jslt = template.parse()?;
+    let jslt: Jslt = "contains(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[1, 2, 3]", "3")]
+  #[case("{\"1\" : 3}", "1")]
+  #[case("\"abcdef\"", "6")]
+  #[case("null", "null")]
+  fn function_size(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "size(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_error() -> Result<()> {
+    let jslt: Jslt = "error(.)".parse()?;
+
+    let output = jslt.transform_value(&json!("foobar")).err();
+
+    assert!(
+      matches!(output, Some(JsltError::Unknown(ref err)) if err == "foobar"),
+      "Bad Err: {output:?}"
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(".not_existing_key, .another_not_existing, 1", "1")]
+  #[case("null, [], {}, \"value\"", "\"value\"")]
+  fn function_fallback(#[case] arguments: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = format!("fallback({arguments})").parse()?;
+
+    let output = jslt.transform_value(&json!({}))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("10", "1", "1")]
+  #[case("\"a\"", "\"b\"", "\"a\"")]
+  #[case("10", "null", "null")]
+  #[case("null", "10", "null")]
+  #[case("9.1232", "2003", "9.1232")]
+  fn function_min(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "min(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("10", "1", "10")]
+  #[case("\"a\"", "\"b\"", "\"b\"")]
+  #[case("10", "null", "null")]
+  #[case("null", "10", "null")]
+  #[case("9.1232", "2003", "2003")]
+  fn function_max(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "max(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::number("number", "null", false)]
+  #[case::number("number", "1", true)]
+  #[case::number("number", "1.0", true)]
+  #[case::number("number", "\"1\"", false)]
+  #[case::integer("integer", "null", false)]
+  #[case::integer("integer", "1", true)]
+  #[case::integer("integer", "1.0", false)]
+  #[case::integer("integer", "\"1\"", false)]
+  #[case::decimal("decimal", "null", false)]
+  #[case::decimal("decimal", "1", false)]
+  #[case::decimal("decimal", "1.0", true)]
+  #[case::decimal("decimal", "\"1\"", false)]
+  #[case::string("string", "null", false)]
+  #[case::string("string", "\"123\"", true)]
+  #[case::string("string", "123", false)]
+  #[case::boolean("boolean", "null", false)]
+  #[case::boolean("boolean", "true", true)]
+  #[case::boolean("boolean", "false", true)]
+  #[case::boolean("boolean", "\"\"", false)]
+  #[case::boolean("boolean", "\" \"", false)]
+  #[case::object("object", "null", false)]
+  #[case::object("object", "{}", true)]
+  #[case::object("object", "[]", false)]
+  #[case::object("object", "\"\"", false)]
+  #[case::array("array", "null", false)]
+  #[case::array("array", "[1, 2]", true)]
+  #[case::array("array", "\"123\"", false)]
+  fn function_is(#[case] kind: &str, #[case] input: Value, #[case] expected: bool) -> Result<()> {
+    let jslt: Jslt = format!("is-{kind}(.)").parse()?;
 
     let output = jslt.transform_value(&input)?;
 
