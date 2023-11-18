@@ -1,3 +1,4 @@
+#![feature(iter_intersperse)]
 #![cfg_attr(test, feature(lazy_cell))]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
@@ -336,6 +337,210 @@ mod tests {
   #[case::array("array", "\"123\"", false)]
   fn function_is(#[case] kind: &str, #[case] input: Value, #[case] expected: bool) -> Result<()> {
     let jslt: Jslt = format!("is-{kind}(.)").parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("23", "23")]
+  #[case("\"23\"", "23")]
+  #[case("\"023\"", "23")]
+  #[case("23.0", "23.0")]
+  #[case("null", "null")]
+  fn function_number(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "number(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::round("round", "1", "1")]
+  #[case::round("round", "1.0", "1")]
+  #[case::round("round", "1.51", "2")]
+  #[case::round("round", "null", "null")]
+  #[case::floor("floor", "1", "1")]
+  #[case::floor("floor", "1.0", "1")]
+  #[case::floor("floor", "1.51", "1")]
+  #[case::floor("floor", "null", "null")]
+  #[case::ceiling("ceiling", "1", "1")]
+  #[case::ceiling("ceiling", "1.0", "1")]
+  #[case::ceiling("ceiling", "1.51", "2")]
+  #[case::ceiling("ceiling", "null", "null")]
+  fn function_roundings(
+    #[case] kind: &str,
+    #[case] input: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = format!("{kind}(.)").parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[1,2,3]", "6")]
+  #[case("[1]", "1")]
+  #[case("[1.0, 2.0]", "3.0")]
+  #[case("[]", "0")]
+  #[case("null", "null")]
+  fn function_sum(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "sum(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("null", "\"null\"")]
+  #[case("123", "\"123\"")]
+  #[case("\"123\"", "\"123\"")]
+  fn function_string(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "string(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(r#"["a", "b", "c"]"#, "\" \"", "\"a b c\"")]
+  #[case(r#"["a"]"#, "\" \"", "\"a\"")]
+  #[case("null", "\"-\"", "null")]
+  #[case("[1]", "\"-\"", "\"1\"")]
+  fn function_join(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "join(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::lowercase("lowercase", "\"ABCÆØÅ\"", "\"abcæøå\"")]
+  #[case::lowercase("lowercase", "null", "null")]
+  #[case::uppercase("uppercase", "\"abcæøå\"", "\"ABCÆØÅ\"")]
+  #[case::uppercase("uppercase", "null", "null")]
+  fn function_case(
+    #[case] case: &str,
+    #[case] input: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = format!("{case}(.)").parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("\"[1,2]\"", "[1, 2]", None)]
+  #[case("\"[1,2\"", "\"BAD\"", Some("BAD".into()))]
+  #[case("null", "null", None)]
+  fn function_from_json(
+    #[case] input: Value,
+    #[case] expected: Value,
+    #[case] fallback: Option<Value>,
+  ) -> Result<()> {
+    let output = if let Some(fallback) = fallback {
+      let jslt: Jslt = "from-json(.value, .fallback)".parse()?;
+      jslt.transform_value(&json!({ "value": input, "fallback": fallback }))?
+    } else {
+      let jslt: Jslt = "from-json(.)".parse()?;
+      jslt.transform_value(&input)?
+    };
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[1, 2]", "\"[1,2]\"")]
+  #[case("1", "\"1\"")]
+  #[case("\"foo\"", "\"foo\"".into())]
+  #[case("null", "\"null\"")]
+  fn function_to_json(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "to-json(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("\"  abc  \"", "\"abc\"")]
+  #[case("\"abc\"", "\"abc\"")]
+  #[case("\"abc \\t\\r\\n\"", "\"abc\"")]
+  #[case("false", "\"false\"")]
+  #[case("null", "null")]
+  fn function_trim(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "trim(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("null", "false")]
+  #[case("\"\"", "false")]
+  #[case("\" \"", "true")]
+  #[case("0", "false")]
+  #[case("1", "true")]
+  #[case("true", "true")]
+  #[case("false", "false")]
+  #[case("[]", "false")]
+  #[case("[1]", "true")]
+  fn function_boolean(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "boolean(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("null", "true")]
+  #[case("\"\"", "true")]
+  #[case("\" \"", "false")]
+  #[case("0", "true")]
+  #[case("1", "false")]
+  #[case("true", "false")]
+  #[case("false", "true")]
+  #[case("[]", "true")]
+  #[case("[1]", "false")]
+  fn function_not(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "not(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
 

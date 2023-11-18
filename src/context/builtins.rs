@@ -1,3 +1,5 @@
+// #![allow(dead_code)]
+
 use serde_json::Value;
 
 use crate::error::{JsltError, Result};
@@ -24,7 +26,7 @@ macro_rules! static_function {
   ($vis:vis fn $ident:ident ($param1:ident: &Value, $param2:ident: Option<&Value>) -> Result<Value> $block:block ) => {
     $vis fn $ident ( arguments: &[Value] ) -> Result<Value> {
       let $param1 = &arguments[0];
-      let $param2 = arguments.get(1).as_ref();
+      let $param2 = arguments.get(1);
 
       $block
     }
@@ -42,7 +44,7 @@ macro_rules! static_function {
     $vis fn $ident ( arguments: &[Value] ) -> Result<Value> {
       let $param1 = &arguments[0];
       let $param2 = &arguments[1];
-      let $param3 = &arguments.get(2).as_ref();
+      let $param3 = &arguments.get(2);
 
       $block
     }
@@ -124,13 +126,6 @@ static_function! {
           .min(right.as_i64().expect("should be i64"))
           .into(),
       ),
-      (Value::Number(left), Value::Number(right)) if left.is_f64() && right.is_f64() => Ok(
-        left
-          .as_f64()
-          .expect("should be f64")
-          .min(right.as_f64().expect("should be f64"))
-          .into(),
-      ),
       (Value::Number(left), Value::Number(right)) => {
         if left.as_f64() < right.as_f64() {
           Ok(Value::Number(left.clone()))
@@ -141,7 +136,7 @@ static_function! {
       (Value::String(left), Value::String(right)) => Ok(Value::String(left.min(right).to_string())),
       (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
       _ => Err(JsltError::InvalidInput(format!(
-        "Unimplemented operation min between ({left} and {right})"
+        "Unimplemented operation min between ({left} and {right}), maybe use number() before passing to min"
       ))),
     }
   }
@@ -164,13 +159,6 @@ static_function! {
           .max(right.as_i64().expect("should be i64"))
           .into(),
       ),
-      (Value::Number(left), Value::Number(right)) if left.is_f64() && right.is_f64() => Ok(
-        left
-          .as_f64()
-          .expect("should be f64")
-          .max(right.as_f64().expect("should be f64"))
-          .into(),
-      ),
       (Value::Number(left), Value::Number(right)) => {
         if left.as_f64() > right.as_f64() {
           Ok(Value::Number(left.clone()))
@@ -181,7 +169,7 @@ static_function! {
       (Value::String(left), Value::String(right)) => Ok(Value::String(left.max(right).to_string())),
       (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
       _ => Err(JsltError::InvalidInput(format!(
-        "Unimplemented operation max between ({left} and {right})"
+        "Unimplemented operation max between ({left} and {right}, maybe use number() before passing to max"
       ))),
     }
   }
@@ -206,53 +194,62 @@ static_function! {
 }
 
 static_function! {
-  pub fn number(maybe_number: &Value, fallback: &Value) -> Result<Value> {
+  pub fn number(maybe_number: &Value, fallback: Option<&Value>) -> Result<Value> {
     match maybe_number {
-      Value::String(str_number) => Ok(str_number.parse().map(Value::Number).ok().unwrap_or_else(|| fallback.clone())),
+      Value::String(str_number) => Ok(
+        str_number
+          .parse::<u64>()
+          .map(|long| long.into())
+          .or(str_number.parse::<i64>().map(|int| int.into()))
+          .or(str_number.parse::<f64>().map(|int| int.into()))
+          .unwrap_or_else(|_| fallback.cloned().into()),
+      ),
       Value::Number(_) => Ok(maybe_number.clone()),
-      _ => Ok(fallback.clone()),
+      _ => Ok(fallback.cloned().into()),
     }
   }
 }
 
 static_function! {
-pub fn round(value: &Value) -> Result<Value> {
-  match value {
-    Value::Number(number) if number.is_f64() => {
-      let rounded = number.as_f64().expect("Should be f64").round();
+  pub fn round(value: &Value) -> Result<Value> {
+    match value {
+      Value::Number(number) if number.is_f64() => {
+        let rounded = number.as_f64().expect("Should be f64").round();
 
-      Ok(Value::Number(if rounded > 0.0 {
-        (rounded as u64).into()
-      } else {
-        (rounded as i64).into()
-      }))
+        Ok(Value::Number(if rounded > 0.0 {
+          (rounded as u64).into()
+        } else {
+          (rounded as i64).into()
+        }))
+      }
+      Value::Number(_) => Ok(value.clone()),
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of round must be number".to_string(),
+      )),
     }
-    Value::Number(_) => Ok(value.clone()),
-    _ => Err(JsltError::InvalidInput(
-      "Input of round must be number".to_string(),
-    )),
   }
-}
 }
 
 static_function! {
-pub fn floor(value: &Value) -> Result<Value> {
-  match value {
-    Value::Number(number) if number.is_f64() => {
-      let rounded = number.as_f64().expect("Should be f64").floor();
+  pub fn floor(value: &Value) -> Result<Value> {
+    match value {
+      Value::Number(number) if number.is_f64() => {
+        let rounded = number.as_f64().expect("Should be f64").floor();
 
-      Ok(Value::Number(if rounded > 0.0 {
-        (rounded as u64).into()
-      } else {
-        (rounded as i64).into()
-      }))
+        Ok(Value::Number(if rounded > 0.0 {
+          (rounded as u64).into()
+        } else {
+          (rounded as i64).into()
+        }))
+      }
+      Value::Number(_) => Ok(value.clone()),
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of round must be number".to_string(),
+      )),
     }
-    Value::Number(_) => Ok(value.clone()),
-    _ => Err(JsltError::InvalidInput(
-      "Input of round must be number".to_string(),
-    )),
   }
-}
 }
 
 static_function! {
@@ -268,6 +265,7 @@ static_function! {
         }))
       }
       Value::Number(_) => Ok(value.clone()),
+      Value::Null => Ok(Value::Null),
       _ => Err(JsltError::InvalidInput(
         "Input of round must be number".to_string(),
       )),
@@ -276,20 +274,40 @@ static_function! {
 }
 
 static_function! {
-  pub fn sum(_values: &Value) -> Result<Value> {
-    todo!()
+  pub fn random() -> Result<Value> {
+    unimplemented!()
+  }
+}
+
+static_function! {
+  pub fn sum(values: &Value) -> Result<Value> {
+    match values {
+      Value::Array(items) if items.iter().all(|item| matches!(item, Value::Number(num) if num.is_u64())) => {
+        Ok(items.iter().filter_map(|item| item.as_u64()).sum::<u64>().into())
+      }
+      Value::Array(items) if items.iter().all(|item| matches!(item, Value::Number(num) if num.is_i64())) => {
+        Ok(items.iter().filter_map(|item| item.as_i64()).sum::<i64>().into())
+      }
+      Value::Array(items) if items.iter().all(|item| item.is_number()) => {
+        Ok(items.iter().filter_map(|item| item.as_f64()).sum::<f64>().into())
+      }
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of round must be array full of numbers".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
   pub fn r#mod(_left: &Value, _right: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn hash_int(_left: &Value, _right: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
@@ -302,106 +320,165 @@ static_function! {
 }
 
 static_function! {
-  pub fn string(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn string(value: &Value) -> Result<Value> {
+    match value {
+      Value::String(_) => Ok(value.clone()),
+      _ => Ok(value.to_string().into()),
+    }
   }
 }
 
 static_function! {
   pub fn test(_value: &Value, _regex: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn capture(_input: &Value, _regex: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn split(_input: &Value, _regex: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
-  pub fn join(_array: &Value, _separator: &Value) -> Result<Value> {
-    todo!()
-  }
-}
-static_function! {
-  pub fn lowercase(_string: &Value) -> Result<Value> {
-    todo!()
+  pub fn join(array: &Value, separator: &Value) -> Result<Value> {
+    match array {
+      Value::Array(items) => {
+        let separator = separator
+          .as_str()
+          .map(str::to_owned)
+          .unwrap_or_else(|| separator.to_string());
+
+        Ok(
+          items
+            .iter()
+            .map(|item| {
+              item
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_else(|| item.to_string())
+            })
+            .intersperse(separator)
+            .collect::<String>()
+            .into(),
+        )
+      }
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of round must be array full of numbers".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
-  pub fn uppercase(_string: &Value) -> Result<Value> {
-    todo!()
+  pub fn lowercase(string: &Value) -> Result<Value> {
+    match string {
+      Value::String(value) => Ok(value.to_lowercase().into()),
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of lowercase must be string".to_string(),
+      )),
+    }
+  }
+}
+
+static_function! {
+  pub fn uppercase(string: &Value) -> Result<Value> {
+    match string {
+      Value::String(value) => Ok(value.to_uppercase().into()),
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of uppercase must be string".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
   pub fn sha256_hex(_string: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn starts_with(_tested: &Value, _prefix: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn ends_with(_tested: &Value, _prefix: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
-  pub fn from_json(_string: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    todo!()
+  pub fn from_json(string: &Value, fallback: Option<&Value>) -> Result<Value> {
+    match (string, fallback) {
+      (Value::String(value), Some(fallback)) => Ok(serde_json::from_str(value).ok().unwrap_or_else(|| fallback.clone())),
+      (Value::String(value), None) => Ok(serde_json::from_str(value)?),
+      (Value::Null, _) => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of from-json must be string".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
-  pub fn to_json(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn to_json(value: &Value) -> Result<Value> {
+    Ok(Value::String(serde_json::to_string(value)?))
   }
 }
 
 static_function! {
   pub fn replace(_value: &Value, _regexp: &Value, _out: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
-  pub fn trim(_string: &Value) -> Result<Value> {
-    todo!()
+  pub fn trim(string: &Value) -> Result<Value> {
+    match string {
+      Value::String(value) => Ok(value.trim().into()),
+      Value::Null => Ok(Value::Null),
+      _ => Ok(string.to_string().trim().into())
+    }
   }
 }
 
 static_function! {
   pub fn uuid(_a: &Value, _b: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 // Boolean
 
 static_function! {
-  pub fn boolean(_value: &Value) -> Result<Value> {
-    todo!()
+  pub fn boolean(value: &Value) -> Result<Value> {
+    match value {
+      Value::Array(value) => Ok((!value.is_empty()).into()),
+      Value::Bool(value) => Ok(Value::Bool(*value)),
+      Value::Number(value) => Ok(Value::Bool(
+        !(value.as_u64() == Some(0) || value.as_i64() == Some(0) || value.as_f64() == Some(0.0)),
+      )),
+      Value::Null => Ok(Value::Bool(false)),
+      Value::Object(value) => Ok((!value.is_empty()).into()),
+      Value::String(value) => Ok((!value.is_empty()).into()),
+    }
   }
 }
 
-static_function! {
-  pub fn not(_value: &Value) -> Result<Value> {
-    todo!()
-  }
+pub fn not(arguments: &[Value]) -> Result<Value> {
+  boolean(arguments).map(|value| (!value.as_bool().expect("is boolean")).into())
 }
 
 static_function! {
@@ -420,7 +497,7 @@ static_function! {
 
 static_function! {
   pub fn get_key(_object: &Value, _key: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
@@ -428,7 +505,7 @@ static_function! {
 
 static_function! {
   pub fn array(_value: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
@@ -440,37 +517,37 @@ static_function! {
 
 static_function! {
   pub fn flatten(_array: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn all(_array: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn any(_array: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn zip(_values_left: &Value, _values_right: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn zip_with_index(_values: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn index_of(_array: &Value, _value: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
@@ -478,19 +555,19 @@ static_function! {
 
 static_function! {
   pub fn now() -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn parse_time(_time: &Value, _format: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
 static_function! {
   pub fn format_time(_timestamp: &Value, _format: &Value, _timezone: Option<&Value>) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
 
@@ -498,6 +575,6 @@ static_function! {
 
 static_function! {
   pub fn parse_url(_url: &Value) -> Result<Value> {
-    todo!()
+    unimplemented!()
   }
 }
