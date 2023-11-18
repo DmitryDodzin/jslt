@@ -35,9 +35,7 @@ static_function! {
       Value::Array(array) => Ok(array.len().into()),
       Value::Object(object) => Ok(object.len().into()),
       Value::String(string) => Ok(string.len().into()),
-      _ => Err(JsltError::Unknown(format!(
-        "Expecting input to be sequence but got {input:?}"
-      ))),
+      _ => Err(JsltError::InvalidInput("Arguments must be array | object | string".to_string())),
     }
   }
 }

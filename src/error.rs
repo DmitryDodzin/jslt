@@ -13,6 +13,8 @@ pub enum JsltError {
   UnexpectedContent(Rule),
   #[error("UnexpectedEnd")]
   UnexpectedEnd,
+  #[error("InvalidInput: {0}")]
+  InvalidInput(String),
   #[error(transparent)]
   Pest(#[from] Box<pest::error::Error<Rule>>),
   #[error("Expecting Number for ranged access but got {0:?}")]
