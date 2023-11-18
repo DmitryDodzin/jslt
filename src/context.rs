@@ -58,8 +58,41 @@ impl Default for JsltContext {
     include_builtin!(functions, floor);
     include_builtin!(functions, ceiling);
     include_builtin!(functions, sum);
-    include_builtin!(functions, r#mod);
+    include_builtin!(functions, r#mod, "mod");
     include_builtin!(functions, hash_int, "hash-int");
+    include_builtin!(functions, is_string, "is-string");
+    include_builtin!(functions, string);
+    include_builtin!(functions, test);
+    include_builtin!(functions, capture);
+    include_builtin!(functions, split);
+    include_builtin!(functions, join);
+    include_builtin!(functions, lowercase);
+    include_builtin!(functions, uppercase);
+    include_builtin!(functions, sha256_hex, "sha256-hex");
+    include_builtin!(functions, starts_with, "starts-with");
+    include_builtin!(functions, ends_with, "ends-with");
+    include_builtin!(functions, from_json, "from-json");
+    include_builtin!(functions, to_json, "to-json");
+    include_builtin!(functions, replace);
+    include_builtin!(functions, trim);
+    include_builtin!(functions, uuid);
+    include_builtin!(functions, boolean);
+    include_builtin!(functions, not);
+    include_builtin!(functions, is_boolean, "is-boolean");
+    include_builtin!(functions, is_object, "is-object");
+    include_builtin!(functions, get_key, "get-key");
+    include_builtin!(functions, array);
+    include_builtin!(functions, is_array, "is-array");
+    include_builtin!(functions, flatten);
+    include_builtin!(functions, all);
+    include_builtin!(functions, any);
+    include_builtin!(functions, zip);
+    include_builtin!(functions, zip_with_index, "zip-with-index");
+    include_builtin!(functions, index_of, "index-of");
+    include_builtin!(functions, now);
+    include_builtin!(functions, parse_time, "parse-time");
+    include_builtin!(functions, format_time, "format-time");
+    include_builtin!(functions, parse_url, "parse-url");
 
     JsltContext { functions }
   }

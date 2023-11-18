@@ -62,6 +62,7 @@ impl FromStr for Jslt {
 mod tests {
   use std::{ops::Deref, sync::LazyLock};
 
+  use rstest::rstest;
   use serde_json::json;
 
   static BASIC_INPUT: LazyLock<Value> = LazyLock::new(|| {
@@ -202,19 +203,27 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn function_call() -> Result<()> {
-    let jslt: Jslt = r#"
-    {
-      "n_menuitem": size(.menu.popup.menuitem),
-      "n_data" : [ for ( .data ) size(.) ]
-    }
-    "#
-    .parse()?;
+  #[rstest]
+  #[case::contains("contains(., [1, 2, 3])", "null", "false")]
+  #[case::contains("contains(., [1, 2, 3])", "1", "true")]
+  #[case::contains("contains(., [1, 2, 3])", "0", "false")]
+  #[case::contains("contains(., {\"no\" : false})", "\"no\"", "true")]
+  #[case::contains("contains(., {\"1\" : false})", "1", "true")]
+  #[case::contains("contains(., \"abc\")", "\"ab\"", "true")]
+  #[case::size("size(.)", "[1, 2, 3]", "3")]
+  #[case::size("size(.)", "{\"1\" : 3}", "1")]
+  #[case::size("size(.)", "\"abcdef\"", "6")]
+  #[case::size("size(.)", "null", "null")]
+  fn function_call(
+    #[case] template: &str,
+    #[case] input: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = template.parse()?;
 
-    let output = jslt.transform_value(&BASIC_INPUT)?;
+    let output = jslt.transform_value(&input)?;
 
-    assert_eq!(output, json!({ "n_menuitem": 2, "n_data": [5, 5] }));
+    assert_eq!(output, expected);
 
     Ok(())
   }
