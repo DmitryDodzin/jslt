@@ -1,61 +1,50 @@
 use std::ops::Deref;
 
-use enum_dispatch::enum_dispatch;
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
+  context::Context,
   error::{JsltError, Result},
-  parser::Rule,
+  expect_inner,
+  parser::{value::ValueBuilder, FromParis, Rule},
+  Transform,
 };
 
-pub trait FromParis: Sized {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self>;
-}
-
-#[enum_dispatch]
-pub trait Transform {
-  fn transform_value(&self, context: &Value) -> Result<Value>;
-}
-
 #[derive(Debug)]
-#[enum_dispatch(Transform)]
 pub enum JsltBuilder {
   Accessor(AccessorBuilder),
   Array(ArrayBuilder),
-  Boolean(BooleanBuilder),
-  Null(NullBuilder),
-  Number(NumberBuilder),
   Object(ObjectBuilder),
-  String(StringBuilder),
+  Value(ValueBuilder),
+  FunctionCall(FunctionCallBuilder),
+}
+
+impl Transform for JsltBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    match self {
+      JsltBuilder::Accessor(accessor) => accessor.transform_value(context, input),
+      JsltBuilder::Array(array) => array.transform_value(context, input),
+      JsltBuilder::Object(object) => object.transform_value(context, input),
+      JsltBuilder::Value(value) => value.transform_value(context, input),
+      JsltBuilder::FunctionCall(fcall) => fcall.transform_value(context, input),
+    }
+  }
 }
 
 impl FromParis for JsltBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    for pair in pairs {
+    while let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
-        Rule::Accessor => Ok(JsltBuilder::Accessor(AccessorBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::Array => Ok(JsltBuilder::Array(ArrayBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::COMMENT => continue,
-        Rule::Boolean => Ok(JsltBuilder::Boolean(BooleanBuilder(
-          pair
-            .as_str()
-            .parse()
-            .map_err(|_| JsltError::UnexpectedContent(Rule::Boolean))?,
-        ))),
-        Rule::Null => Ok(JsltBuilder::Null(NullBuilder)),
-        Rule::Number => Ok(JsltBuilder::Number(NumberBuilder(pair.as_str().parse()?))),
-        Rule::Object => Ok(JsltBuilder::Object(ObjectBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::String => Ok(JsltBuilder::String(StringBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        rule => Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned())),
+        Rule::Accessor => AccessorBuilder::from_pairs(pairs).map(JsltBuilder::Accessor),
+        Rule::Array => ArrayBuilder::from_pairs(pairs).map(JsltBuilder::Array),
+        Rule::COMMENT => {
+          let _ = pairs.next();
+          continue;
+        }
+        Rule::Object => ObjectBuilder::from_pairs(pairs).map(JsltBuilder::Object),
+        Rule::FunctionCall => FunctionCallBuilder::from_pairs(pairs).map(JsltBuilder::FunctionCall),
+        _ => ValueBuilder::from_pairs(pairs).map(JsltBuilder::Value),
       };
     }
 
@@ -72,6 +61,8 @@ pub struct AccessorBuilder {
 
 impl FromParis for AccessorBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let pairs = expect_inner!(pairs, Rule::Accessor)?;
+
     let mut ident = None;
     let mut nested = None;
     let mut keys = Vec::new();
@@ -110,9 +101,9 @@ impl FromParis for AccessorBuilder {
           }
         }
         Rule::Accessor => {
-          nested = Some(Box::new(AccessorBuilder::from_pairs(
-            &mut pair.into_inner(),
-          )?));
+          nested = Some(Box::new(AccessorBuilder::from_pairs(&mut Pairs::single(
+            pair,
+          ))?));
         }
         _ => break,
       }
@@ -129,10 +120,11 @@ impl FromParis for AccessorBuilder {
 }
 
 impl Transform for AccessorBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
+  #[allow(clippy::only_used_in_recursion)]
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut value = (!self.ident.is_empty())
-      .then(|| &context[&self.ident])
-      .unwrap_or(context);
+      .then(|| &input[&self.ident])
+      .unwrap_or(input);
 
     let mut temp_value_store = None;
 
@@ -165,7 +157,7 @@ impl Transform for AccessorBuilder {
     }
 
     match &self.nested {
-      Some(nested) => nested.transform_value(value),
+      Some(nested) => nested.transform_value(context, value),
       None => Ok(value.clone()),
     }
   }
@@ -184,6 +176,8 @@ pub struct ArrayBuilder {
 
 impl FromParis for ArrayBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::Array)?;
+
     let mut builder = ArrayBuilder::default();
 
     while let Some(next) = pairs.peek() {
@@ -203,7 +197,9 @@ impl FromParis for ArrayBuilder {
         }
         _ => builder
           .inner
-          .push(ArrayBuilderInner::Item(JsltBuilder::from_pairs(pairs)?)),
+          .push(ArrayBuilderInner::Item(JsltBuilder::from_pairs(
+            &mut pairs,
+          )?)),
       }
     }
 
@@ -212,17 +208,17 @@ impl FromParis for ArrayBuilder {
 }
 
 impl Transform for ArrayBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = Vec::new();
 
     for inner in &self.inner {
       match inner {
-        ArrayBuilderInner::Item(jslt) => items.push(jslt.transform_value(context)?),
+        ArrayBuilderInner::Item(jslt) => items.push(jslt.transform_value(context.clone(), input)?),
         ArrayBuilderInner::For(ArrayFor { source, output }) => {
-          let source = source.transform_value(context)?;
+          let source = source.transform_value(context.clone(), input)?;
 
-          for context in source.as_array().expect("Should be array") {
-            items.push(output.transform_value(context)?);
+          for input in source.as_array().expect("Should be array") {
+            items.push(output.transform_value(context.clone(), input)?);
           }
         }
       }
@@ -239,40 +235,11 @@ pub enum ArrayBuilderInner {
 }
 
 #[derive(Debug)]
-pub struct BooleanBuilder(bool);
-
-impl Transform for BooleanBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Bool(self.0))
-  }
-}
-
-#[derive(Debug)]
-pub struct NumberBuilder(pub(super) serde_json::Number);
-
-impl Transform for NumberBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Number(self.0.clone()))
-  }
-}
-
-#[derive(Debug)]
 pub struct PairBuilder(JsltBuilder, JsltBuilder);
 
 impl FromParis for PairBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let inner = pairs
-      .next()
-      .ok_or(JsltError::UnexpectedContent(Rule::Pair))?;
-
-    if !matches!(inner.as_rule(), Rule::Pair) {
-      return Err(JsltError::UnexpectedInput(
-        Rule::Pair,
-        inner.as_str().to_owned(),
-      ));
-    }
-
-    let mut inner = inner.into_inner();
+    let mut inner = expect_inner!(pairs, Rule::Pair)?;
 
     let key = JsltBuilder::from_pairs(&mut inner)?;
     let value = JsltBuilder::from_pairs(&mut inner)?;
@@ -288,6 +255,8 @@ pub struct ObjectBuilder {
 
 impl FromParis for ObjectBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let pairs = expect_inner!(pairs, Rule::Object)?;
+
     let mut builder = ObjectBuilder::default();
 
     for pair in pairs {
@@ -318,7 +287,7 @@ impl FromParis for ObjectBuilder {
 }
 
 impl Transform for ObjectBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = Vec::new();
 
     for inner in &self.inner {
@@ -326,25 +295,25 @@ impl Transform for ObjectBuilder {
         ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
           items.push((
             key
-              .transform_value(context)?
+              .transform_value(context.clone(), input)?
               .as_str()
               .expect("Should result in string")
               .to_owned(),
-            value.transform_value(context)?,
+            value.transform_value(context.clone(), input)?,
           ));
         }
         ObjectBuilderInner::For(ObjectFor { source, output }) => {
           let PairBuilder(key, value) = output.deref();
-          let source = source.transform_value(context)?;
+          let source = source.transform_value(context.clone(), input)?;
 
-          for context in source.as_array().expect("Should be array") {
+          for input in source.as_array().expect("Should be array") {
             items.push((
               key
-                .transform_value(context)?
+                .transform_value(context.clone(), input)?
                 .as_str()
                 .expect("Should result in string")
                 .to_owned(),
-              value.transform_value(context)?,
+              value.transform_value(context.clone(), input)?,
             ))
           }
         }
@@ -388,35 +357,41 @@ type ArrayFor = ForBuilder<JsltBuilder>;
 type ObjectFor = ForBuilder<PairBuilder>;
 
 #[derive(Debug)]
-pub struct StringBuilder(String);
+pub struct FunctionCallBuilder {
+  name: String,
+  arguments: Vec<JsltBuilder>,
+}
 
-impl FromParis for StringBuilder {
+impl FromParis for FunctionCallBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let inner = pairs
-      .next()
-      .ok_or(JsltError::UnexpectedContent(Rule::String))?;
+    let mut pairs = expect_inner!(pairs, Rule::FunctionCall)?;
 
-    let rule = inner.as_rule();
+    let name = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
 
-    if matches!(rule, Rule::Inner) {
-      Ok(StringBuilder(inner.as_str().to_owned()))
-    } else {
-      Err(JsltError::UnexpectedInput(rule, inner.as_str().to_owned()))
-    }
+    let arguments = pairs
+      .map(|pair| JsltBuilder::from_pairs(&mut Pairs::single(pair)))
+      .collect::<Result<_>>()?;
+
+    Ok(FunctionCallBuilder {
+      name: name.as_str().to_owned(),
+      arguments,
+    })
   }
 }
 
-impl Transform for StringBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::String(self.0.clone()))
-  }
-}
+impl Transform for FunctionCallBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let function = context
+      .functions
+      .get(&self.name)
+      .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?;
 
-#[derive(Debug)]
-pub struct NullBuilder;
-
-impl Transform for NullBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Null)
+    function.call(
+      &self
+        .arguments
+        .iter()
+        .map(|arg| arg.transform_value(context.clone(), input))
+        .collect::<Result<Vec<_>>>()?,
+    )
   }
 }

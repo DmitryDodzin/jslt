@@ -2,7 +2,7 @@ Jslb = _{ SOI ~ Expr ~ EOI }
 
 Value = _{ Array | Object | Number | String | Boolean | Null }
 
-Expr = _{ Value | Accessor }
+Expr = _{ Value | Accessor | FunctionCall }
 
 Accessor = {
     "." ~ Ident? ~ KeyAccessor* ~ Accessor?
@@ -10,7 +10,9 @@ Accessor = {
 KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
 RangeAccessor = { Expr ~ ":" ~ Expr }
 
-Ident = @{ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+Ident = @{ !("for") ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+
+FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
 
 Array    = {
     "[" ~ "]"

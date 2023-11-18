@@ -1,23 +1,31 @@
 #![cfg_attr(test, feature(lazy_cell))]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use std::str::FromStr;
+use std::{borrow::Cow, str::FromStr};
 
 use pest::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
+  context::{Context, JsltContext},
   error::{JsltError, Result},
-  parser::{FromParis, JsltBuilder, JsltParser, Rule, Transform},
+  parser::*,
 };
 
+pub mod context;
 pub mod error;
+mod macros;
 pub mod parser;
+
+pub trait Transform {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value>;
+}
 
 #[derive(Debug)]
 pub struct Jslt {
   builder: JsltBuilder,
+  context: JsltContext,
 }
 
 impl Jslt {
@@ -32,7 +40,9 @@ impl Jslt {
 
   /// Apply the jslt transformation
   pub fn transform_value(&self, input: &Value) -> Result<Value> {
-    self.builder.transform_value(input)
+    self
+      .builder
+      .transform_value(Cow::Borrowed(&self.context), input)
   }
 }
 
@@ -42,8 +52,9 @@ impl FromStr for Jslt {
   fn from_str(value: &str) -> Result<Self> {
     let mut pairs = JsltParser::parse(Rule::Jslb, value).map_err(Box::new)?;
     let builder = JsltBuilder::from_pairs(&mut pairs)?;
+    let context = JsltContext::default();
 
-    Ok(Jslt { builder })
+    Ok(Jslt { builder, context })
   }
 }
 
@@ -187,6 +198,23 @@ mod tests {
         }]
       })
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_call() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "n_menuitem": size(.menu.popup.menuitem),
+      "n_data" : [ for ( .data ) size(.) ]
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, json!({ "n_menuitem": 2, "n_data": [5, 5] }));
 
     Ok(())
   }

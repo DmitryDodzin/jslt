@@ -11,6 +11,8 @@ pub enum JsltError {
   UnexpectedInput(Rule, String),
   #[error("UnexpectedContent: for {0:?}")]
   UnexpectedContent(Rule),
+  #[error("UnexpectedEnd")]
+  UnexpectedEnd,
   #[error(transparent)]
   Pest(#[from] Box<pest::error::Error<Rule>>),
   #[error("Expecting Number for ranged access but got {0:?}")]
@@ -19,4 +21,6 @@ pub enum JsltError {
   IndexOutOfRange,
   #[error(transparent)]
   SerdeJson(#[from] serde_json::Error),
+  #[error("{0}")]
+  Unknown(String),
 }
