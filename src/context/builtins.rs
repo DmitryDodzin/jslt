@@ -275,7 +275,7 @@ static_function! {
 
 static_function! {
   pub fn random() -> Result<Value> {
-    unimplemented!()
+    Ok(Value::Number(serde_json::Number::from_f64(rand::random()).unwrap_or_else(|| 0.into())))
   }
 }
 
@@ -300,8 +300,22 @@ static_function! {
 }
 
 static_function! {
-  pub fn r#mod(_left: &Value, _right: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn r#mod(left: &Value, right: &Value) -> Result<Value> {
+    match (left, right) {
+      (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+        Ok(Value::Number(
+          left
+            .as_i64()
+            .expect("Should be i64")
+            .rem_euclid(right.as_i64().expect("Should be i64"))
+            .into(),
+        ))
+      }
+      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of mod must be natural numbers".to_string(),
+      )),
+    }
   }
 }
 
@@ -462,23 +476,30 @@ static_function! {
 
 // Boolean
 
-static_function! {
-  pub fn boolean(value: &Value) -> Result<Value> {
-    match value {
-      Value::Array(value) => Ok((!value.is_empty()).into()),
-      Value::Bool(value) => Ok(Value::Bool(*value)),
-      Value::Number(value) => Ok(Value::Bool(
-        !(value.as_u64() == Some(0) || value.as_i64() == Some(0) || value.as_f64() == Some(0.0)),
-      )),
-      Value::Null => Ok(Value::Bool(false)),
-      Value::Object(value) => Ok((!value.is_empty()).into()),
-      Value::String(value) => Ok((!value.is_empty()).into()),
+#[inline]
+fn boolean_cast(value: &Value) -> bool {
+  match value {
+    Value::Array(value) => !value.is_empty(),
+    Value::Bool(value) => *value,
+    Value::Number(value) => {
+      !(value.as_u64() == Some(0) || value.as_i64() == Some(0) || value.as_f64() == Some(0.0))
     }
+    Value::Null => false,
+    Value::Object(value) => !value.is_empty(),
+    Value::String(value) => !value.is_empty(),
   }
 }
 
-pub fn not(arguments: &[Value]) -> Result<Value> {
-  boolean(arguments).map(|value| (!value.as_bool().expect("is boolean")).into())
+static_function! {
+  pub fn boolean(value: &Value) -> Result<Value> {
+    Ok(Value::Bool(boolean_cast(value)))
+  }
+}
+
+static_function! {
+  pub fn not(value: &Value) -> Result<Value> {
+    Ok(Value::Bool(!boolean_cast(value)))
+  }
 }
 
 static_function! {
@@ -522,20 +543,44 @@ static_function! {
 }
 
 static_function! {
-  pub fn all(_array: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn all(array: &Value) -> Result<Value> {
+    match array {
+      Value::Array(array) => {
+        Ok(Value::Bool(array.iter().all(boolean_cast)))
+      }
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of all must be array".to_string(),
+      ))
+    }
   }
 }
 
 static_function! {
-  pub fn any(_array: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn any(array: &Value) -> Result<Value> {
+    match array {
+      Value::Array(array) => {
+        Ok(Value::Bool(array.iter().any(boolean_cast)))
+      }
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of all must be array".to_string(),
+      ))
+    }
   }
 }
 
 static_function! {
-  pub fn zip(_values_left: &Value, _values_right: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn zip(left: &Value, right: &Value) -> Result<Value> {
+    match (left, right) {
+      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+      (Value::Array(left), Value::Array(right)) if left.len() >= right.len() => {
+        Ok(Value::Array(left.iter().cloned().zip(right.iter().cloned()).map(|(left, right)| Value::Array(vec![left, right])).collect()))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of zip must be two arrays (right must be at least as long as left)".to_string(),
+      ))
+    }
   }
 }
 
@@ -546,8 +591,19 @@ static_function! {
 }
 
 static_function! {
-  pub fn index_of(_array: &Value, _value: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn index_of(array: &Value, value: &Value) -> Result<Value> {
+    match array {
+      Value::Array(array) => {
+        match array.iter().enumerate().find(|(_, item)| *item == value) {
+          Some((index, _)) => Ok((index as u64).into()),
+          None => Ok((-1).into())
+        }
+      }
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of index-of must be array".to_string(),
+      ))
+    }
   }
 }
 

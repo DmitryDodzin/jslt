@@ -58,9 +58,9 @@ impl Default for JsltContext {
     include_builtin!(functions, round);
     include_builtin!(functions, floor);
     include_builtin!(functions, ceiling);
-    // include_builtin!(functions, random);
+    include_builtin!(functions, random);
     include_builtin!(functions, sum);
-    // include_builtin!(functions, r#mod, "mod");
+    include_builtin!(functions, r#mod, "mod");
     // include_builtin!(functions, hash_int, "hash-int");
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
@@ -86,11 +86,11 @@ impl Default for JsltContext {
     // include_builtin!(functions, array);
     include_builtin!(functions, is_array, "is-array");
     // include_builtin!(functions, flatten);
-    // include_builtin!(functions, all);
-    // include_builtin!(functions, any);
-    // include_builtin!(functions, zip);
+    include_builtin!(functions, all);
+    include_builtin!(functions, any);
+    include_builtin!(functions, zip);
     // include_builtin!(functions, zip_with_index, "zip-with-index");
-    // include_builtin!(functions, index_of, "index-of");
+    include_builtin!(functions, index_of, "index-of");
     // include_builtin!(functions, now);
     // include_builtin!(functions, parse_time, "parse-time");
     // include_builtin!(functions, format_time, "format-time");

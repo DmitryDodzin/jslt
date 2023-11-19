@@ -388,6 +388,23 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn function_random() -> Result<()> {
+    let jslt: Jslt = "random()".parse()?;
+
+    let value = jslt
+      .transform_value(&().into())?
+      .as_f64()
+      .expect("Should be f64");
+
+    assert!(
+      value > 0.0 && value < 1.0,
+      "random() should return value between 0.0 and 1.0, got {value}"
+    );
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("[1,2,3]", "6")]
   #[case("[1]", "1")]
@@ -398,6 +415,29 @@ mod tests {
     let jslt: Jslt = "sum(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("10", "2", "0")]
+  #[case("10", "3", "1")]
+  #[case("10", "4", "2")]
+  #[case("-10", "3", "2")]
+  #[case("-10", "-3", "2")]
+  #[case("10", "-3", "1")]
+  #[case("10", "null", "null")]
+  #[case("null", "10", "null")]
+  fn function_mod(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "mod(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
 
     assert_eq!(output, expected);
 
@@ -543,6 +583,74 @@ mod tests {
     let jslt: Jslt = "not(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[true, true, true]", "true")]
+  #[case("[true, true, false]", "false")]
+  #[case("null", "null")]
+  #[case("[]", "true")]
+  fn function_all(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "all(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[false, false, false]", "false")]
+  #[case("[false, false, true]", "true")]
+  #[case("null", "null")]
+  #[case("[]", "false")]
+  fn function_any(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "any(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(r#"["a", "b", "c"]"#, "[1, 2, 3]", r#"[["a", 1], ["b", 2], ["c", 3]]"#)]
+  #[case(r#"["a", "b", "c"]"#, "null", "null")]
+  #[case("null", "[1, 2, 3]", "null")]
+  fn function_zip(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "zip(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("[]", "1", "-1")]
+  #[case("[0, 1, 2]", "1", "1")]
+  #[case("[0, 1, 2, null]", "null", "3")]
+  #[case("[0, 1, 2]", "null", "-1")]
+  #[case("null", "1", "null")]
+  fn function_index_of(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "index-of(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
 
     assert_eq!(output, expected);
 
