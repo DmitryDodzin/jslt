@@ -497,6 +497,30 @@ mod tests {
   }
 
   #[rstest]
+  #[case(
+    "\"foo\"",
+    "\"2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae\""
+  )]
+  #[case(
+    "\"42\"",
+    "\"73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049\""
+  )]
+  #[case(
+    "42",
+    "\"73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049\""
+  )]
+  #[case("null", "null")]
+  fn function_sha256_hex(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "sha256-hex(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("\"[1,2]\"", "[1, 2]", None)]
   #[case("\"[1,2\"", "\"BAD\"", Some("BAD".into()))]
   #[case("null", "null", None)]

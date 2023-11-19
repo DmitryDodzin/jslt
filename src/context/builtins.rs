@@ -333,12 +333,17 @@ static_function! {
   }
 }
 
+#[inline]
+fn string_cast(value: &Value) -> String {
+  match value {
+    Value::String(value) => value.clone(),
+    _ => value.to_string(),
+  }
+}
+
 static_function! {
   pub fn string(value: &Value) -> Result<Value> {
-    match value {
-      Value::String(_) => Ok(value.clone()),
-      _ => Ok(value.to_string().into()),
-    }
+    Ok(string_cast(value).into())
   }
 }
 
@@ -416,8 +421,11 @@ static_function! {
 }
 
 static_function! {
-  pub fn sha256_hex(_string: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn sha256_hex(value: &Value) -> Result<Value> {
+    match value {
+      Value::Null => Ok(Value::Null),
+      _ => Ok(sha256::digest(string_cast(value)).into())
+    }
   }
 }
 
