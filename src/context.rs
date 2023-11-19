@@ -8,7 +8,7 @@ mod builtins;
 
 #[derive(Clone)]
 pub enum JsltFunction {
-  Static(&'static dyn Fn(&[Value]) -> Result<Value>),
+  Static(&'static (dyn Fn(&[Value]) -> Result<Value> + Send + Sync)),
 }
 
 impl JsltFunction {
