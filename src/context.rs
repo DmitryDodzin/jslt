@@ -61,7 +61,7 @@ impl Default for JsltContext {
     include_builtin!(functions, random);
     include_builtin!(functions, sum);
     include_builtin!(functions, r#mod, "mod");
-    // include_builtin!(functions, hash_int, "hash-int");
+    include_builtin!(functions, hash_int, "hash-int");
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
     // include_builtin!(functions, test);

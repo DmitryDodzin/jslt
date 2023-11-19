@@ -1,5 +1,10 @@
 #![allow(dead_code)]
 
+use std::{
+  collections::hash_map::DefaultHasher,
+  hash::{Hash, Hasher},
+};
+
 use serde_json::Value;
 
 use crate::error::{JsltError, Result};
@@ -319,9 +324,31 @@ static_function! {
   }
 }
 
+fn hash_value<T: Hasher>(hasher: &mut T, value: &Value) {
+  match value {
+    Value::Array(array) => {
+      for item in array {
+        hash_value(hasher, item);
+      }
+    }
+    Value::Bool(value) => value.hash(hasher),
+    Value::Number(value) => value.hash(hasher),
+    Value::Null => 0_u8.hash(hasher),
+    Value::String(value) => value.hash(hasher),
+    Value::Object(map) => {
+      for (key, value) in map {
+        key.hash(hasher);
+        hash_value(hasher, value);
+      }
+    }
+  }
+}
+
 static_function! {
-  pub fn hash_int(_left: &Value, _right: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn hash_int(value: &Value) -> Result<Value> {
+    let mut hasher = DefaultHasher::new();
+    hash_value(&mut hasher, value);
+    Ok(hasher.finish().into())
   }
 }
 
