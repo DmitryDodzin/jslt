@@ -2,7 +2,8 @@
   "name": "jslt-node",
   "version": "0.1.0",
   "description": "Jslt",
-  "main": "index.node",
+  "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "build": "cargo-cp-artifact -nc index.node -- cargo build --message-format=json-render-diagnostics",
     "install": "npm run build",
