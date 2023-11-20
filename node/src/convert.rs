@@ -89,7 +89,13 @@ pub fn from_value_to_json<'c, C: Context<'c>>(
   }
 
   if value.is_a::<JsNumber, _>(cx) {
-    return Ok(value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx).into());
+    let num = value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx);
+
+    return if num.trunc() == num {
+      Ok((num as i64).into())
+    } else {
+      Ok(num.into())
+    };
   }
 
   if value.is_a::<JsString, _>(cx) {
