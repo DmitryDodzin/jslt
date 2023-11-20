@@ -4,3 +4,10 @@
 
 # Rust
 /target
+
+
+# Node
+node_modules/
+
+*.node
+
