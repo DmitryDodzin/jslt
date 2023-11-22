@@ -1,4 +1,10 @@
-const jslt = require('./index.node');
+var jslt = null;
+
+try {
+  jslt = require(`./bin/${process.platform}-${process.arch}.node`);
+} catch (_) {
+  jslt = require('./bin/index.node');
+}
 
 exports.compile = jslt.compile;
 exports.transform = jslt.transform;
