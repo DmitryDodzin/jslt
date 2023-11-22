@@ -1,4 +1,4 @@
-use neon::{handle::Managed, prelude::*};
+use neon::prelude::*;
 use serde_json::Value as JsonValue;
 
 pub fn from_json_to_value<'c, C: Context<'c>>(
@@ -102,8 +102,5 @@ pub fn from_value_to_json<'c, C: Context<'c>>(
     return Ok(value.downcast_or_throw::<JsString, _>(cx)?.value(cx).into());
   }
 
-  cx.throw_type_error(format!(
-    "Unable to convert value to json (addr: {:?})",
-    value.to_raw()
-  ))
+  cx.throw_type_error(format!("Unable to convert value to json ({value:?})"))
 }
