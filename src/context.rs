@@ -64,9 +64,9 @@ impl Default for JsltContext {
     include_builtin!(functions, hash_int, "hash-int");
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
-    // include_builtin!(functions, test);
+    include_builtin!(functions, test);
     // include_builtin!(functions, capture);
-    // include_builtin!(functions, split);
+    include_builtin!(functions, split);
     include_builtin!(functions, join);
     include_builtin!(functions, lowercase);
     include_builtin!(functions, uppercase);
@@ -77,13 +77,13 @@ impl Default for JsltContext {
     include_builtin!(functions, to_json, "to-json");
     // include_builtin!(functions, replace);
     include_builtin!(functions, trim);
-    // include_builtin!(functions, uuid);
+    include_builtin!(functions, uuid);
     include_builtin!(functions, boolean);
     include_builtin!(functions, not);
     include_builtin!(functions, is_boolean, "is-boolean");
     include_builtin!(functions, is_object, "is-object");
-    // include_builtin!(functions, get_key, "get-key");
-    // include_builtin!(functions, array);
+    include_builtin!(functions, get_key, "get-key");
+    include_builtin!(functions, array);
     include_builtin!(functions, is_array, "is-array");
     // include_builtin!(functions, flatten);
     include_builtin!(functions, all);

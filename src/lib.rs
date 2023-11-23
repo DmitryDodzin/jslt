@@ -350,6 +350,7 @@ mod tests {
   #[case("\"23\"", "23")]
   #[case("\"023\"", "23")]
   #[case("23.0", "23.0")]
+  #[case("\"1E+1\"", "1E+1")]
   #[case("null", "null")]
   fn function_number(#[case] input: Value, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = "number(.)".parse()?;
@@ -452,6 +453,44 @@ mod tests {
     let jslt: Jslt = "string(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("123".into(), "\\d+".into(), "true")]
+  #[case("abc123".into(), "\\d+".into(), "true")]
+  #[case("abc123".into(), "^\\d+$".into(), "false")]
+  fn function_test(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "test(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("1,2,3,4,5".into(), ",".into(), r#"["1", "2", "3", "4", "5"]"#)]
+  #[case("1,2,3,4,5".into(), ";".into(), r#"["1,2,3,4,5"]"#)]
+  #[case("null", ";".into(), "null")]
+  #[case(",2".into(), ",".into(), r#"["", "2"]"#)]
+  // #[case("2,".into(), ",".into(), r#"["2"]"#)] TODO: maybe add the logic
+  fn function_split(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "split(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
 
     assert_eq!(output, expected);
 
@@ -574,6 +613,24 @@ mod tests {
   }
 
   #[rstest]
+  // #[case("1234567890", "1234567890", "\"00000000-4996-102d-8000-0000499602d2\"")]
+  // #[case("0", "0", "\"00000000-0000-1000-8000-000000000000\"")]
+  #[case("null", "null", "\"00000000-0000-0000-0000-000000000000\"")]
+  fn function_uuid(
+    #[case] left: Value,
+    #[case] right: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "uuid(.left, .right)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("null", "false")]
   #[case("\"\"", "false")]
   #[case("\" \"", "true")]
@@ -605,6 +662,52 @@ mod tests {
   #[case("[1]", "false")]
   fn function_not(#[case] input: Value, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = "not(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("no", Some("<unknown>"), "Norway".into())]
+  #[case("se", Some("<unknown>"), "Sweden".into())]
+  #[case("dk", Some("<unknown>"), "<unknown>".into())]
+  #[case("dk", None, "null")]
+  fn function_get_key(
+    #[case] key: &str,
+    #[case] fallback: Option<&str>,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let lut = json!({
+      "no": "Norway",
+      "se": "Sweden"
+    });
+
+    let jslt: Jslt = "get-key(.lut, .key, .fallback)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "lut": lut, "key": key, "fallback": fallback }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("null", "null")]
+  #[case("[1, 2]", "[1, 2]")]
+  #[case(
+    r#"{"a": 1, "b": 2}"#,
+    r#"
+    [
+      {"key" : "a", "value" : 1},
+      {"key" : "b", "value" : 2}
+    ]
+    "#
+  )]
+  fn function_array(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "array(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
 

@@ -5,7 +5,9 @@ use std::{
   hash::{Hash, Hasher},
 };
 
+use regex::Regex;
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::error::{JsltError, Result};
 
@@ -49,7 +51,7 @@ macro_rules! static_function {
     $vis fn $ident ( arguments: &[Value] ) -> Result<Value> {
       let $param1 = &arguments[0];
       let $param2 = &arguments[1];
-      let $param3 = &arguments.get(2);
+      let $param3 = arguments.get(2);
 
       $block
     }
@@ -375,8 +377,18 @@ static_function! {
 }
 
 static_function! {
-  pub fn test(_value: &Value, _regex: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn test(value: &Value, re: &Value) -> Result<Value> {
+    match (value, re) {
+      (Value::Null, _) => Ok(Value::Bool(false)),
+      (Value::String(value), Value::String(re)) => {
+        let re = Regex::new(re)
+          .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing regex: {err}")))?;
+        Ok(Value::Bool(re.is_match(value)))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of lowercase must be string".to_string(),
+      )),
+    }
   }
 }
 
@@ -387,8 +399,24 @@ static_function! {
 }
 
 static_function! {
-  pub fn split(_input: &Value, _regex: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn split(value: &Value, re: &Value) -> Result<Value> {
+    match (value, re) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::String(value), Value::String(re)) => {
+        let re = Regex::new(re)
+          .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing re: {err}")))?;
+
+        Ok(Value::Array(
+          re.split(value)
+            .map(str::to_owned)
+            .map(Value::String)
+            .collect(),
+        ))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of lowercase must be string".to_string(),
+      )),
+    }
   }
 }
 
@@ -503,10 +531,28 @@ static_function! {
   }
 }
 
-static_function! {
-  pub fn uuid(_a: &Value, _b: &Value) -> Result<Value> {
-    unimplemented!()
+pub fn uuid(arguments: &[Value]) -> Result<Value> {
+  if arguments.is_empty() {
+    return Ok(Value::String(Uuid::new_v4().hyphenated().to_string()));
   }
+
+  let uuid = match (&arguments[0], &arguments[1]) {
+    (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+      unimplemented!()
+      // Uuid::from_u64_pair(
+      //   left.as_u64().expect("should be u64"),
+      //   right.as_u64().expect("should be u64"),
+      // )
+    }
+    (Value::Null, Value::Null) => Uuid::nil(),
+    _ => {
+      return Err(JsltError::InvalidInput(
+        "Input of uuid must be either empty or with 2 numbers or nulls for zeroed".to_string(),
+      ))
+    }
+  };
+
+  Ok(Value::String(uuid.hyphenated().to_string()))
 }
 
 // Boolean
@@ -552,16 +598,37 @@ static_function! {
 }
 
 static_function! {
-  pub fn get_key(_object: &Value, _key: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    unimplemented!()
+  pub fn get_key(object: &Value, key: &Value, fallback: Option<&Value>) -> Result<Value> {
+    match (object, key) {
+      (Value::Object(map), Value::String(key)) => match (map.get(key), fallback) {
+        (Some(Value::Null) | None, Some(fallback)) => Ok(fallback.clone()),
+        (Some(value), _) => Ok(value.clone()),
+        (None, None) => Ok(Value::Null),
+      },
+      _ => Err(JsltError::InvalidInput(
+        "Input of get-key must be object with string key".to_string(),
+      )),
+    }
   }
 }
 
 // Array
 
 static_function! {
-  pub fn array(_value: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn array(value: &Value) -> Result<Value> {
+    match value {
+      Value::Object(map) => Ok(Value::Array(
+        map
+          .iter()
+          .map(|(key, value)| serde_json::json!({ "key": key, "value": value }))
+          .collect(),
+      )),
+      Value::Array(_) => Ok(value.clone()),
+      Value::Null => Ok(Value::Null),
+      Value::Number(_) | Value::Bool(_) | Value::String(_) => Err(JsltError::InvalidInput(
+        "Input of array must not be string, number or boolean".to_string(),
+      )),
+    }
   }
 }
 
