@@ -5,11 +5,11 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo build --message-format=json-render-diagnostics",
-    "zigbuild": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo zigbuild --message-format=json-render-diagnostics",
+    "build": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo build -p jslt-node --message-format=json-render-diagnostics",
+    "zigbuild": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics",
     "clean": "rm -rf bin",
-    "install": "./check-bin.sh || pnpm run build",
-    "prepack": "pnpm clean && make bin",
+    "install": "node ./check-bin.js || pnpm run build",
+    "prepack": "pnpm run clean && make bin",
     "test": "cargo test"
   },
   "devDependencies": {

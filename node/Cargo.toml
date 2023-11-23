@@ -8,7 +8,7 @@ exclude = ["bin/*.node"]
 crate-type = ["cdylib"]
 
 [dependencies]
-jslt = { path = ".." }
+jslt = { path = "..", version = "0.1" }
 
 neon = { version = "1.0.0-alpha.4", default-features = false, features = ["napi-8"] }
 serde_json = "1"
