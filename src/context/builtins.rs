@@ -3,10 +3,12 @@
 use std::{
   collections::hash_map::DefaultHasher,
   hash::{Hash, Hasher},
+  time::SystemTime,
 };
 
 use regex::Regex;
-use serde_json::Value;
+use serde_json::{json, Value};
+use url::Url;
 use uuid::Uuid;
 
 use crate::error::{JsltError, Result};
@@ -620,7 +622,7 @@ static_function! {
       Value::Object(map) => Ok(Value::Array(
         map
           .iter()
-          .map(|(key, value)| serde_json::json!({ "key": key, "value": value }))
+          .map(|(key, value)| json!({ "key": key, "value": value }))
           .collect(),
       )),
       Value::Array(_) => Ok(value.clone()),
@@ -713,7 +715,11 @@ static_function! {
 
 static_function! {
   pub fn now() -> Result<Value> {
-    unimplemented!()
+    let now = SystemTime::now()
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .expect("Should be valid");
+
+    Ok((now.as_secs_f64()).into())
   }
 }
 
@@ -732,7 +738,26 @@ static_function! {
 // Miscellaneous
 
 static_function! {
-  pub fn parse_url(_url: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn parse_url(url: &Value) -> Result<Value> {
+    let url: Url = serde_json::from_value(url.clone())?;
+
+    Ok(json!({
+      "scheme": url.scheme(),
+      "userinfo": match url.password() {
+        Some(password) => format!("{}:{password}", url.username()),
+        None => url.username().to_owned(),
+      },
+      "host": url.host_str(),
+      "port": url.port(),
+      "path": url.path(),
+      "query": url.query(),
+      "parameters": url.query_pairs().fold(serde_json::Map::new(), |mut map, (key, value)| {
+        map.entry(key)
+        .or_insert_with(|| json!([]))
+          .as_array_mut().expect("Should be array").push(Value::String(value.into()));
+        map
+      }),
+      "fragment": url.fragment(),
+    }))
   }
 }

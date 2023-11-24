@@ -91,10 +91,10 @@ impl Default for JsltContext {
     include_builtin!(functions, zip);
     // include_builtin!(functions, zip_with_index, "zip-with-index");
     include_builtin!(functions, index_of, "index-of");
-    // include_builtin!(functions, now);
+    include_builtin!(functions, now);
     // include_builtin!(functions, parse_time, "parse-time");
     // include_builtin!(functions, format_time, "format-time");
-    // include_builtin!(functions, parse_url, "parse-url");
+    include_builtin!(functions, parse_url, "parse-url");
 
     JsltContext { functions }
   }

@@ -613,8 +613,6 @@ mod tests {
   }
 
   #[rstest]
-  // #[case("1234567890", "1234567890", "\"00000000-4996-102d-8000-0000499602d2\"")]
-  // #[case("0", "0", "\"00000000-0000-1000-8000-000000000000\"")]
   #[case("null", "null", "\"00000000-0000-0000-0000-000000000000\"")]
   fn function_uuid(
     #[case] left: Value,
@@ -780,6 +778,44 @@ mod tests {
     let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
 
     assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_parse_url() -> Result<()> {
+    let jslt: Jslt = "parse-url(\"https://www.example.com/?aa=1&aa=2&bb=&cc\")".parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(
+      output,
+      json!({
+        "scheme": "https",
+        "userinfo": "",
+        "host": "www.example.com",
+        "port": null,
+        "path": "/",
+        "query": "aa=1&aa=2&bb=&cc",
+        "parameters": {
+          "aa": ["1", "2"],
+          "bb": [""],
+          "cc": [""]
+        },
+        "fragment": null,
+      })
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_now() -> Result<()> {
+    let jslt: Jslt = "now()".parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert!(matches!(output, Value::Number(_)));
 
     Ok(())
   }
