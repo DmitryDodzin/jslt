@@ -5,9 +5,17 @@ use crate::{
   context::Context,
   error::{JsltError, Result},
   expect_inner,
-  parser::{FromParis, Rule},
+  parser::{
+    builder::ExprBuilder,
+    value::{accessor::AccessorBuilder, array::ArrayBuilder, object::ObjectBuilder},
+    FromParis, Rule,
+  },
   Transform,
 };
+
+pub mod accessor;
+pub mod array;
+pub mod object;
 
 #[derive(Debug)]
 pub struct BooleanBuilder(bool);
@@ -81,6 +89,25 @@ impl Transform for NumberBuilder {
 }
 
 #[derive(Debug)]
+pub struct ScopeBuilder(Box<ExprBuilder>);
+
+impl FromParis for ScopeBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::Scope)?;
+
+    ExprBuilder::from_pairs(&mut pairs)
+      .map(Box::new)
+      .map(ScopeBuilder)
+  }
+}
+
+impl Transform for ScopeBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    self.0.transform_value(context, input)
+  }
+}
+
+#[derive(Debug)]
 pub struct StringBuilder(String);
 
 impl FromParis for StringBuilder {
@@ -110,18 +137,26 @@ impl Transform for StringBuilder {
 
 #[derive(Debug)]
 pub enum ValueBuilder {
+  Accessor(AccessorBuilder),
+  Array(ArrayBuilder),
   Boolean(BooleanBuilder),
   Null(NullBuilder),
   Number(NumberBuilder),
+  Object(ObjectBuilder),
+  Scope(ScopeBuilder),
   String(StringBuilder),
 }
 
 impl Transform for ValueBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     match self {
+      ValueBuilder::Accessor(accessor) => accessor.transform_value(context, input),
+      ValueBuilder::Array(array) => array.transform_value(context, input),
       ValueBuilder::Boolean(boolean) => boolean.transform_value(context, input),
       ValueBuilder::Null(null) => null.transform_value(context, input),
       ValueBuilder::Number(number) => number.transform_value(context, input),
+      ValueBuilder::Object(object) => object.transform_value(context, input),
+      ValueBuilder::Scope(scope) => scope.transform_value(context, input),
       ValueBuilder::String(string) => string.transform_value(context, input),
     }
   }
@@ -131,6 +166,10 @@ impl FromParis for ValueBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     for pair in pairs {
       return match pair.as_rule() {
+        Rule::Accessor => {
+          AccessorBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Accessor)
+        }
+        Rule::Array => ArrayBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Array),
         Rule::Boolean => {
           BooleanBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Boolean)
         }
@@ -139,6 +178,10 @@ impl FromParis for ValueBuilder {
         Rule::Number => {
           NumberBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Number)
         }
+        Rule::Object => {
+          ObjectBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Object)
+        }
+        Rule::Scope => ScopeBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Scope),
         Rule::String => {
           StringBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::String)
         }

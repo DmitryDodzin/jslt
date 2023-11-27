@@ -25,7 +25,7 @@ pub trait Transform {
 
 #[derive(Debug)]
 pub struct Jslt {
-  builder: JsltBuilder,
+  builder: ExprBuilder,
   context: JsltContext,
 }
 
@@ -51,8 +51,8 @@ impl FromStr for Jslt {
   type Err = JsltError;
 
   fn from_str(value: &str) -> Result<Self> {
-    let mut pairs = JsltParser::parse(Rule::Jslb, value).map_err(Box::new)?;
-    let builder = JsltBuilder::from_pairs(&mut pairs)?;
+    let mut pairs = JsltParser::parse(Rule::Jslt, value).map_err(Box::new)?;
+    let builder = ExprBuilder::from_pairs(&mut pairs)?;
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })
@@ -586,6 +586,7 @@ mod tests {
   #[case("1", "\"1\"")]
   #[case("\"foo\"", "\"foo\"".into())]
   #[case("null", "\"null\"")]
+  #[case("null", "\"null\"")]
   fn function_to_json(#[case] input: Value, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = "to-json(.)".parse()?;
 
@@ -816,6 +817,20 @@ mod tests {
     let output = jslt.transform_value(&Value::Null)?;
 
     assert!(matches!(output, Value::Number(_)));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("1 + 2", "3")]
+  #[case("1 + 2 / 2", "2")]
+  #[case("2 / 2 + 1", "2")]
+  fn operators(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, expected);
 
     Ok(())
   }

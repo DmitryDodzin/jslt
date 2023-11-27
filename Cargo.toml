@@ -20,3 +20,7 @@ uuid = { version = "1", features = ["v4"] }
 members = [
 	"node"
 ]
+
+[profile.release]
+lto = true
+opt-level = 'z'

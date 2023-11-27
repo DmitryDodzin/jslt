@@ -1,8 +1,17 @@
-Jslb = _{ SOI ~ Expr ~ EOI }
+Jslt = _{ SOI ~ Expr ~ EOI }
 
-Value = _{ Array | Object | Number | String | Boolean | Null }
+Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope }
 
-Expr = _{ Value | Accessor | FunctionCall }
+Expr = _{ OperatorExpr |  Value }
+OperatorExpr = { Value ~ (Operator ~ Value)+ }
+
+Operator = _{ Add | Sub | Div | Mul }
+Add = { "+" }
+Sub = { "-" }
+Div = { "/" }
+Mul = { "*" }
+
+Scope = { "(" ~ Expr ~ ")" }
 
 Accessor = {
     "." ~ Ident? ~ KeyAccessor* ~ Accessor?
