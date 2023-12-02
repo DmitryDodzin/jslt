@@ -825,6 +825,7 @@ mod tests {
   #[case("1 + 2", "3")]
   #[case("1 + 2 / 2", "2")]
   #[case("2 / 2 + 1", "2")]
+  #[case("3.12 * 2", "6.24")]
   fn operators(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = jslt.parse()?;
 
