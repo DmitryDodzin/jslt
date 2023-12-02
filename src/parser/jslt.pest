@@ -5,11 +5,18 @@ Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | Functi
 Expr = _{ OperatorExpr |  Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
-Operator = _{ Add | Sub | Div | Mul }
+Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal }
 Add = { "+" }
 Sub = { "-" }
-Div = { "/" }
 Mul = { "*" }
+Div = { "/" }
+Gt = { ">" }
+Lt = { "<" }
+Gte = { ">=" }
+Lte = { "<=" }
+Equal = { "==" }
+And = { "and" }
+Or = { "or" }
 
 Scope = { "(" ~ Expr ~ ")" }
 

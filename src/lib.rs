@@ -828,6 +828,12 @@ mod tests {
   #[case("1 + 2 / 2 + 1", "3")]
   #[case("3.12 * 2", "6.24")]
   #[case("\"3.12\" + \".2\"", "\"3.12.2\"")]
+  #[case("true and true", "true")]
+  #[case("true or false", "true")]
+  #[case("false or false", "false")]
+  #[case("false == false", "true")]
+  #[case("1 < 3 and 4 * 2 > 5", "true")]
+  #[case("1 <= 3 and 4 * 2 <= 8", "true")]
   fn operators(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = jslt.parse()?;
 

@@ -50,6 +50,13 @@ pub enum OperatorBuilder {
   Sub,
   Div,
   Mul,
+  And,
+  Or,
+  Gt,
+  Gte,
+  Lt,
+  Lte,
+  Equal,
 }
 
 #[derive(Debug)]
@@ -99,12 +106,21 @@ macro_rules! impl_operator_parse {
 
 impl OperatorExprBuilder {
   pub fn from_inner_vec(mut pairs: Vec<Pair<Rule>>) -> Result<Self> {
+    impl_operator_parse!(pairs, And);
+    impl_operator_parse!(pairs, Or);
+    impl_operator_parse!(pairs, Gt);
+    impl_operator_parse!(pairs, Gte);
+    impl_operator_parse!(pairs, Lt);
+    impl_operator_parse!(pairs, Lte);
+    impl_operator_parse!(pairs, Equal);
     impl_operator_parse!(pairs, Add);
     impl_operator_parse!(pairs, Sub);
     impl_operator_parse!(pairs, Mul);
     impl_operator_parse!(pairs, Div);
 
-    unreachable!()
+    Err(JsltError::InvalidInput(format!(
+      "Could not evaluate the expession {pairs:#?}",
+    )))
   }
 }
 
@@ -122,7 +138,7 @@ impl Transform for OperatorExprBuilder {
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
-      OperatorBuilder::Add => match (left, right) {
+      OperatorBuilder::Add => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64")).into(),
@@ -137,12 +153,11 @@ impl Transform for OperatorExprBuilder {
           (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
         ),
         (Value::String(left), Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
-        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-        _ => Err(JsltError::InvalidInput(
-          "Add (\"+\") operator must have an input of 2 numbers or strings".to_string(),
-        )),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Add (\"+\") operator must be 2 numbers or strings (got \"{left} + {right}\")"
+        ))),
       },
-      OperatorBuilder::Sub => match (left, right) {
+      OperatorBuilder::Sub => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64")).into(),
@@ -156,12 +171,11 @@ impl Transform for OperatorExprBuilder {
         (Value::Number(left), Value::Number(right)) => Ok(
           (left.as_f64().expect("Should be f64") - right.as_f64().expect("Should be f64")).into(),
         ),
-        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-        _ => Err(JsltError::InvalidInput(
-          "Sub (\"-\") operator must have an input of 2 numbers".to_string(),
-        )),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Sub (\"-\") operator must be 2 numbers (got \"{left} - {right}\")"
+        ))),
       },
-      OperatorBuilder::Mul => match (left, right) {
+      OperatorBuilder::Mul => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64")).into(),
@@ -175,12 +189,11 @@ impl Transform for OperatorExprBuilder {
         (Value::Number(left), Value::Number(right)) => Ok(
           (left.as_f64().expect("Should be f64") * right.as_f64().expect("Should be f64")).into(),
         ),
-        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-        _ => Err(JsltError::InvalidInput(
-          "Mul (\"*\") operator must have an input of 2 numbers".to_string(),
-        )),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Mul (\"*\") operator must be 2 numbers (got \"{left} * {right}\")"
+        ))),
       },
-      OperatorBuilder::Div => match (left, right) {
+      OperatorBuilder::Div => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64")).into(),
@@ -194,11 +207,102 @@ impl Transform for OperatorExprBuilder {
         (Value::Number(left), Value::Number(right)) => Ok(
           (left.as_f64().expect("Should be f64") / right.as_f64().expect("Should be f64")).into(),
         ),
-        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-        _ => Err(JsltError::InvalidInput(
-          "Div (\"/\") operator must have an input of 2 numbers".to_string(),
-        )),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Div (\"/\") operator must be 2 numbers (got \"{left} / {right}\")"
+        ))),
       },
+      OperatorBuilder::And => match (&left, &right) {
+        (Value::Bool(true), Value::Bool(true)) => Ok(Value::Bool(true)),
+        (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "And (\"and\") operator must be 2 booleans (got \"{left} and {right}\")"
+        ))),
+      },
+      OperatorBuilder::Or => match (&left, &right) {
+        (Value::Bool(_) | Value::Null, Value::Bool(true))
+        | (Value::Bool(true), Value::Bool(_) | Value::Null) => Ok(Value::Bool(true)),
+        (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Or (\"/\") operator must be 2 booleans (got \"{left} or {right}\")"
+        ))),
+      },
+      OperatorBuilder::Gt => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") > right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") > right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") > right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left > right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
+        ))),
+      },
+      OperatorBuilder::Gte => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") >= right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") >= right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") >= right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left >= right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
+        ))),
+      },
+      OperatorBuilder::Lt => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") < right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") < right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") < right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left < right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
+        ))),
+      },
+      OperatorBuilder::Lte => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") <= right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") <= right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") <= right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left <= right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
+        ))),
+      },
+      OperatorBuilder::Equal => Ok(Value::Bool(left == right)),
     }
   }
 }
