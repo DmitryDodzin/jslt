@@ -118,107 +118,86 @@ impl FromParis for OperatorExprBuilder {
 
 impl Transform for OperatorExprBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let left = self.lhs.transform_value(context.clone(), input)?;
+    let right = self.rhs.transform_value(context, input)?;
+
     match self.operator {
-      OperatorBuilder::Add => {
-        let left = self.lhs.transform_value(context.clone(), input)?;
-        let right = self.rhs.transform_value(context, input)?;
-
-        match (left, right) {
-          (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
-            Ok(Value::Number(
-              (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
-            Ok(Value::Number(
-              (left.as_i64().expect("Should be i64") + right.as_i64().expect("Should be i64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) => Ok(
-            (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
-          ),
-          _ => Err(JsltError::InvalidInput(
-            "Add (\"+\") operator must have an input of 2 numbers".to_string(),
-          )),
+      OperatorBuilder::Add => match (left, right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64")).into(),
+          ))
         }
-      }
-      OperatorBuilder::Sub => {
-        let left = self.lhs.transform_value(context.clone(), input)?;
-        let right = self.rhs.transform_value(context, input)?;
-
-        match (left, right) {
-          (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
-            Ok(Value::Number(
-              (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
-            Ok(Value::Number(
-              (left.as_i64().expect("Should be i64") - right.as_i64().expect("Should be i64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) => Ok(
-            (left.as_f64().expect("Should be f64") - right.as_f64().expect("Should be f64")).into(),
-          ),
-          _ => Err(JsltError::InvalidInput(
-            "Sub (\"-\") operator must have an input of 2 numbers".to_string(),
-          )),
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") + right.as_i64().expect("Should be i64")).into(),
+          ))
         }
-      }
-      OperatorBuilder::Mul => {
-        let left = self.lhs.transform_value(context.clone(), input)?;
-        let right = self.rhs.transform_value(context, input)?;
-
-        match (left, right) {
-          (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
-            Ok(Value::Number(
-              (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
-            Ok(Value::Number(
-              (left.as_i64().expect("Should be i64") * right.as_i64().expect("Should be i64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) => Ok(
-            (left.as_f64().expect("Should be f64") * right.as_f64().expect("Should be f64")).into(),
-          ),
-          _ => Err(JsltError::InvalidInput(
-            "Mul (\"*\") operator must have an input of 2 numbers".to_string(),
-          )),
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
+        ),
+        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+        _ => Err(JsltError::InvalidInput(
+          "Add (\"+\") operator must have an input of 2 numbers".to_string(),
+        )),
+      },
+      OperatorBuilder::Sub => match (left, right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64")).into(),
+          ))
         }
-      }
-      OperatorBuilder::Div => {
-        let left = self.lhs.transform_value(context.clone(), input)?;
-        let right = self.rhs.transform_value(context, input)?;
-
-        match (left, right) {
-          (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
-            Ok(Value::Number(
-              (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
-            Ok(Value::Number(
-              (left.as_i64().expect("Should be i64") / right.as_i64().expect("Should be i64"))
-                .into(),
-            ))
-          }
-          (Value::Number(left), Value::Number(right)) => Ok(
-            (left.as_f64().expect("Should be f64") / right.as_f64().expect("Should be f64")).into(),
-          ),
-          _ => Err(JsltError::InvalidInput(
-            "Div (\"/\") operator must have an input of 2 numbers".to_string(),
-          )),
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") - right.as_i64().expect("Should be i64")).into(),
+          ))
         }
-      }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") - right.as_f64().expect("Should be f64")).into(),
+        ),
+        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+        _ => Err(JsltError::InvalidInput(
+          "Sub (\"-\") operator must have an input of 2 numbers".to_string(),
+        )),
+      },
+      OperatorBuilder::Mul => match (left, right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") * right.as_i64().expect("Should be i64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") * right.as_f64().expect("Should be f64")).into(),
+        ),
+        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+        _ => Err(JsltError::InvalidInput(
+          "Mul (\"*\") operator must have an input of 2 numbers".to_string(),
+        )),
+      },
+      OperatorBuilder::Div => match (left, right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") / right.as_i64().expect("Should be i64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") / right.as_f64().expect("Should be f64")).into(),
+        ),
+        (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+        _ => Err(JsltError::InvalidInput(
+          "Div (\"/\") operator must have an input of 2 numbers".to_string(),
+        )),
+      },
     }
   }
 }
