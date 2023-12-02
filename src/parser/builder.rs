@@ -136,9 +136,10 @@ impl Transform for OperatorExprBuilder {
         (Value::Number(left), Value::Number(right)) => Ok(
           (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
         ),
+        (Value::String(left), Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
         (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
         _ => Err(JsltError::InvalidInput(
-          "Add (\"+\") operator must have an input of 2 numbers".to_string(),
+          "Add (\"+\") operator must have an input of 2 numbers or strings".to_string(),
         )),
       },
       OperatorBuilder::Sub => match (left, right) {
