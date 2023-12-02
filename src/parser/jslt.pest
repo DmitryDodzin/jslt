@@ -26,7 +26,7 @@ Accessor = {
 KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
 RangeAccessor = { Expr ~ ":" ~ Expr }
 
-Ident = @{ !("for") ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+Ident = @{ !(For | If) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
 
 FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
 
@@ -35,19 +35,27 @@ Array    = {
   | "[" ~ (Expr | ArrayFor) ~ ("," ~ (Expr | ArrayFor))* ~ "]"
 }
 ArrayFor = {
-    "for" ~ "(" ~ Expr ~ ")" ~ Expr
+    For ~ "(" ~ Expr ~ ")" ~ Expr ~ IfCondition?
 }
+
+
+If = _{ "if" }
+For = _{ "for" }
 
 Object    = {
     "{" ~ "}"
   | "{" ~ (Pair | ObjectFor) ~ ("," ~ (Pair | ObjectFor))* ~ "}"
 }
 ObjectFor = {
-    "for" ~ "(" ~ Expr ~ ")" ~ Pair
+    For ~ "(" ~ Expr ~ ")" ~ Pair ~ IfCondition?
 }
 
 Pair = {
     Expr ~ ":" ~ Expr
+}
+
+IfCondition = {
+    If ~ "(" ~ Expr ~ ")"
 }
 
 String = ${ "\"" ~ Inner ~ "\"" }

@@ -834,6 +834,7 @@ mod tests {
   #[case("false == false", "true")]
   #[case("1 < 3 and 4 * 2 > 5", "true")]
   #[case("1 <= 3 and 4 * 2 <= 8", "true")]
+  #[case("[for ([1, 2, 3]) . if ( . > 2 )]", "[3]")]
   fn operators(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = jslt.parse()?;
 

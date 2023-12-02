@@ -4,7 +4,7 @@ use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
-  context::Context,
+  context::{builtins::boolean_cast, Context},
   error::{JsltError, Result},
   expect_inner,
   parser::{
@@ -82,11 +82,21 @@ impl Transform for ObjectBuilder {
             value.transform_value(context.clone(), input)?,
           ));
         }
-        ObjectBuilderInner::For(ObjectFor { source, output }) => {
+        ObjectBuilderInner::For(ObjectFor {
+          source,
+          output,
+          condition,
+        }) => {
           let PairBuilder(key, value) = output.deref();
           let source = source.transform_value(context.clone(), input)?;
 
           for input in source.as_array().expect("Should be array") {
+            if let Some(condition) = condition {
+              if !boolean_cast(&condition.transform_value(context.clone(), input)?) {
+                continue;
+              }
+            }
+
             items.push((
               key
                 .transform_value(context.clone(), input)?

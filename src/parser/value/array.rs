@@ -2,7 +2,7 @@ use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
-  context::Context,
+  context::{builtins::boolean_cast, Context},
   error::{JsltError, Result},
   expect_inner,
   parser::{
@@ -57,10 +57,20 @@ impl Transform for ArrayBuilder {
     for inner in &self.inner {
       match inner {
         ArrayBuilderInner::Item(jslt) => items.push(jslt.transform_value(context.clone(), input)?),
-        ArrayBuilderInner::For(ArrayFor { source, output }) => {
+        ArrayBuilderInner::For(ArrayFor {
+          source,
+          condition,
+          output,
+        }) => {
           let source = source.transform_value(context.clone(), input)?;
 
           for input in source.as_array().expect("Should be array") {
+            if let Some(condition) = condition {
+              if !boolean_cast(&condition.transform_value(context.clone(), input)?) {
+                continue;
+              }
+            }
+
             items.push(output.transform_value(context.clone(), input)?);
           }
         }

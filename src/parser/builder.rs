@@ -311,6 +311,8 @@ impl Transform for OperatorExprBuilder {
 pub struct ForBuilder<B> {
   pub(super) source: Box<ExprBuilder>,
 
+  pub(super) condition: Option<ExprBuilder>,
+
   pub(super) output: Box<B>,
 }
 
@@ -323,8 +325,16 @@ where
 
     let output = B::from_pairs(pairs)?;
 
+    let condition = match pairs.peek() {
+      Some(pair) if matches!(pair.as_rule(), Rule::IfCondition) => {
+        Some(ExprBuilder::from_pairs(&mut pair.into_inner())?)
+      }
+      _ => None,
+    };
+
     Ok(ForBuilder {
       source: Box::new(source),
+      condition,
       output: Box::new(output),
     })
   }

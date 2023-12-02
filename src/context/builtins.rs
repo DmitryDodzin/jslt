@@ -560,7 +560,7 @@ pub fn uuid(arguments: &[Value]) -> Result<Value> {
 // Boolean
 
 #[inline]
-fn boolean_cast(value: &Value) -> bool {
+pub(crate) fn boolean_cast(value: &Value) -> bool {
   match value {
     Value::Array(value) => !value.is_empty(),
     Value::Bool(value) => *value,

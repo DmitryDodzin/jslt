@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::error::Result;
 
-mod builtins;
+pub(crate) mod builtins;
 
 #[derive(Clone)]
 pub enum JsltFunction {
