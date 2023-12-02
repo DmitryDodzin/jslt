@@ -1,6 +1,6 @@
 # JSLT
 
-### Everyones favorite [XSLT](https://www.w3schools.com/xml/xsl_intro.asp) but for json's
+### Everyones favorite [XSLT](https://www.w3schools.com/xml/xsl_intro.asp) but for json
 
 Rust port for Schibsted's [jslt](https://github.com/schibsted/jslt#jslt)
 
@@ -71,9 +71,9 @@ Quick support reference:
 - [x] `// <anything up to end of line>`
 - [x] `{ <key> : <expr> }`
 - [ ] `{ <key> : <expr>, * : . }`
-- [ ] `5 * 7 + 23.2`
-- [ ] `7 < 5`
-- [ ] `7 < 5 and .foo == "yes"`
+- [x] `5 * 7 + 23.2`
+- [x] `7 < 5`
+- [x] `7 < 5 and .foo == "yes"`
  
 Based on [Quick reference](https://github.com/schibsted/jslt#quick-references)
 

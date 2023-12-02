@@ -1,7 +1,10 @@
 [package]
 name = "jslt"
+description = "Everyones favorite xslt but for json"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
 
 [dependencies]
 pest = "2.7"
@@ -20,6 +23,11 @@ uuid = { version = "1", features = ["v4"] }
 members = [
 	"node"
 ]
+
+[workspace.package]
+edition = "2021"
+repository = "https://github.com/DmitryDodzin/jslt.git"
+license = "MIT"
 
 [profile.release]
 lto = true
