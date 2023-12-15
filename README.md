@@ -62,7 +62,7 @@ Quick support reference:
 - [x] `.<name>`
 - [x] `.[<index>]`
 - [x] `.[<from> : <to>]`
-- [ ] `if (<expr>) <expr> else <expr>`
+- [x] `if (<expr>) <expr> else <expr>`
 - [x] `let <name> = <expr>`
 - [x] `$<name>`
 - [x] `[for (<expr>) <expr>]`

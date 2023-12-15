@@ -2,7 +2,7 @@ Jslt = _{ SOI ~ Expr ~ EOI }
 
 Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope | Variable }
 
-Expr = _{ OperatorExpr | VariableDef | FunctionDef |  Value }
+Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement |  Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
 Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal }
@@ -53,6 +53,10 @@ ObjectFor = {
 
 Pair = {
     Expr ~ ":" ~ Expr
+}
+
+IfStatement = {
+    IfCondition ~ Expr ~ ("else" ~ Expr)?
 }
 
 IfCondition = {

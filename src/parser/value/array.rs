@@ -2,7 +2,7 @@ use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
-  context::{builtins::boolean_cast, Context},
+  context::{builtins, Context},
   error::{JsltError, Result},
   expect_inner,
   parser::{
@@ -66,7 +66,7 @@ impl Transform for ArrayBuilder {
 
           for input in source.as_array().expect("Should be array") {
             if let Some(condition) = condition {
-              if !boolean_cast(&condition.transform_value(context.clone(), input)?) {
+              if !builtins::boolean_cast(&condition.transform_value(context.clone(), input)?) {
                 continue;
               }
             }

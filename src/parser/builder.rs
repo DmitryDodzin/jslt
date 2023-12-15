@@ -4,7 +4,7 @@ use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
 
 use crate::{
-  context::{Context, DynamicFunction, JsltFunction},
+  context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
   expect_inner,
   parser::{value::ValueBuilder, FromParis, Rule},
@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub enum ExprBuilder {
   Value(ValueBuilder),
+  IfStatement(IfStatementBuilder),
   OperatorExpr(OperatorExprBuilder),
   FunctionDef(FunctionDefBuilder),
   FunctionCall(FunctionCallBuilder),
@@ -24,6 +25,7 @@ impl Transform for ExprBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     match self {
       ExprBuilder::Value(value) => value.transform_value(context, input),
+      ExprBuilder::IfStatement(ifstmt) => ifstmt.transform_value(context, input),
       ExprBuilder::FunctionCall(fcall) => fcall.transform_value(context, input),
       ExprBuilder::FunctionDef(fdef) => fdef.transform_value(context, input),
       ExprBuilder::OperatorExpr(oper_expr) => oper_expr.transform_value(context, input),
@@ -40,6 +42,7 @@ impl FromParis for ExprBuilder {
           let _ = pairs.next();
           continue;
         }
+        Rule::IfStatement => IfStatementBuilder::from_pairs(pairs).map(ExprBuilder::IfStatement),
         Rule::FunctionCall => FunctionCallBuilder::from_pairs(pairs).map(ExprBuilder::FunctionCall),
         Rule::FunctionDef => FunctionDefBuilder::from_pairs(pairs).map(ExprBuilder::FunctionDef),
         Rule::OperatorExpr => OperatorExprBuilder::from_pairs(pairs).map(ExprBuilder::OperatorExpr),
@@ -345,6 +348,49 @@ where
       condition,
       output: Box::new(output),
     })
+  }
+}
+
+#[derive(Debug)]
+pub struct IfStatementBuilder {
+  condition: Box<ExprBuilder>,
+  value: Box<ExprBuilder>,
+  fallback: Option<Box<ExprBuilder>>,
+}
+
+impl FromParis for IfStatementBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::IfStatement)?;
+
+    let mut condition_paris = expect_inner!(pairs, Rule::IfCondition)?;
+
+    let condition = ExprBuilder::from_pairs(&mut condition_paris).map(Box::new)?;
+
+    let value = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    let fallback = (pairs.len() != 0)
+      .then(|| ExprBuilder::from_pairs(&mut pairs).map(Box::new))
+      .transpose()?;
+
+    Ok(IfStatementBuilder {
+      condition,
+      value,
+      fallback,
+    })
+  }
+}
+
+impl Transform for IfStatementBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    if builtins::boolean_cast(&self.condition.transform_value(context.clone(), input)?) {
+      self.value.transform_value(context, input)
+    } else {
+      self
+        .fallback
+        .as_ref()
+        .map(|fallback| fallback.transform_value(context, input))
+        .unwrap_or_else(|| Ok(Value::Null))
+    }
   }
 }
 
