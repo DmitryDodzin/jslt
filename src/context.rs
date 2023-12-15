@@ -1,20 +1,22 @@
-use std::{borrow::Cow, collections::HashMap, fmt};
+use std::{borrow::Cow, collections::HashMap, fmt, sync::Arc};
 
 use serde_json::Value;
 
-use crate::error::Result;
+use crate::{error::Result, parser::ExprBuilder, Transform};
 
 pub(crate) mod builtins;
 
 #[derive(Clone)]
 pub enum JsltFunction {
   Static(&'static (dyn Fn(&[Value]) -> Result<Value> + Send + Sync)),
+  Dynamic(DynamicFunction),
 }
 
 impl JsltFunction {
   pub fn call(&self, arguments: &[Value]) -> Result<Value> {
     match self {
       JsltFunction::Static(function) => function(arguments),
+      JsltFunction::Dynamic(function) => function.call(arguments),
     }
   }
 }
@@ -23,7 +25,34 @@ impl fmt::Debug for JsltFunction {
   fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       JsltFunction::Static(_) => fmt.debug_tuple("Static").finish(),
+      JsltFunction::Dynamic(function) => fmt.debug_tuple("Dynamic").field(&function).finish(),
     }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct DynamicFunction {
+  pub name: String,
+  pub arguments: Vec<String>,
+  pub expr: Arc<ExprBuilder>,
+  pub context: JsltContext,
+}
+
+impl DynamicFunction {
+  pub fn call(&self, arguments: &[Value]) -> Result<Value> {
+    let arguments = self
+      .arguments
+      .iter()
+      .zip(arguments)
+      .map(|(name, value)| (name.clone(), value.clone()));
+
+    let mut context = self.context.clone();
+
+    context.variables.extend(arguments);
+
+    self
+      .expr
+      .transform_value(Cow::Borrowed(&context), &Value::Null)
   }
 }
 
@@ -39,11 +68,13 @@ macro_rules! include_builtin {
 #[derive(Clone, Debug)]
 pub struct JsltContext {
   pub functions: HashMap<String, JsltFunction>,
+  pub variables: HashMap<String, Value>,
 }
 
 impl Default for JsltContext {
   fn default() -> Self {
     let mut functions = HashMap::default();
+    let variables = HashMap::default();
 
     include_builtin!(functions, contains);
     include_builtin!(functions, size);
@@ -96,7 +127,10 @@ impl Default for JsltContext {
     // include_builtin!(functions, format_time, "format-time");
     include_builtin!(functions, parse_url, "parse-url");
 
-    JsltContext { functions }
+    JsltContext {
+      functions,
+      variables,
+    }
   }
 }
 

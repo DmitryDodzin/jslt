@@ -1,5 +1,5 @@
 mod builder;
-mod value;
+pub mod value;
 
 pub use builder::*;
 use pest::iterators::Pairs;

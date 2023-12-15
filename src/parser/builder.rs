@@ -1,8 +1,10 @@
+use std::{borrow::Cow, sync::Arc};
+
 use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
 
 use crate::{
-  context::Context,
+  context::{Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
   expect_inner,
   parser::{value::ValueBuilder, FromParis, Rule},
@@ -13,7 +15,9 @@ use crate::{
 pub enum ExprBuilder {
   Value(ValueBuilder),
   OperatorExpr(OperatorExprBuilder),
+  FunctionDef(FunctionDefBuilder),
   FunctionCall(FunctionCallBuilder),
+  VariableDef(VariableDefBuilder),
 }
 
 impl Transform for ExprBuilder {
@@ -21,7 +25,9 @@ impl Transform for ExprBuilder {
     match self {
       ExprBuilder::Value(value) => value.transform_value(context, input),
       ExprBuilder::FunctionCall(fcall) => fcall.transform_value(context, input),
+      ExprBuilder::FunctionDef(fdef) => fdef.transform_value(context, input),
       ExprBuilder::OperatorExpr(oper_expr) => oper_expr.transform_value(context, input),
+      ExprBuilder::VariableDef(variable_def) => variable_def.transform_value(context, input),
     }
   }
 }
@@ -35,7 +41,9 @@ impl FromParis for ExprBuilder {
           continue;
         }
         Rule::FunctionCall => FunctionCallBuilder::from_pairs(pairs).map(ExprBuilder::FunctionCall),
+        Rule::FunctionDef => FunctionDefBuilder::from_pairs(pairs).map(ExprBuilder::FunctionDef),
         Rule::OperatorExpr => OperatorExprBuilder::from_pairs(pairs).map(ExprBuilder::OperatorExpr),
+        Rule::VariableDef => VariableDefBuilder::from_pairs(pairs).map(ExprBuilder::VariableDef),
         _ => ValueBuilder::from_pairs(pairs).map(ExprBuilder::Value),
       };
     }
@@ -350,16 +358,17 @@ impl FromParis for FunctionCallBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::FunctionCall)?;
 
-    let name = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
 
     let arguments = pairs
       .map(|pair| ExprBuilder::from_pairs(&mut Pairs::single(pair)))
       .collect::<Result<_>>()?;
 
-    Ok(FunctionCallBuilder {
-      name: name.as_str().to_owned(),
-      arguments,
-    })
+    Ok(FunctionCallBuilder { name, arguments })
   }
 }
 
@@ -377,5 +386,102 @@ impl Transform for FunctionCallBuilder {
         .map(|arg| arg.transform_value(context.clone(), input))
         .collect::<Result<Vec<_>>>()?,
     )
+  }
+}
+
+#[derive(Debug)]
+pub struct FunctionDefBuilder {
+  name: String,
+  arguments: Vec<String>,
+  expr: Arc<ExprBuilder>,
+  next: Box<ExprBuilder>,
+}
+
+impl FromParis for FunctionDefBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::FunctionDef)?;
+
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
+
+    let mut arguments = Vec::new();
+
+    while pairs
+      .peek()
+      .map(|pair| matches!(pair.as_rule(), Rule::Ident))
+      .unwrap_or(false)
+    {
+      arguments.push(pairs.next().expect("was peeked").as_str().to_owned());
+    }
+
+    let expr = ExprBuilder::from_pairs(&mut pairs).map(Arc::new)?;
+
+    let next = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    Ok(FunctionDefBuilder {
+      name,
+      arguments,
+      expr,
+      next,
+    })
+  }
+}
+
+impl Transform for FunctionDefBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let function = DynamicFunction {
+      name: self.name.clone(),
+      arguments: self.arguments.clone(),
+      expr: self.expr.clone(),
+      context: context.clone().into_owned(),
+    };
+
+    let mut context = context.into_owned();
+
+    context
+      .functions
+      .insert(self.name.clone(), JsltFunction::Dynamic(function));
+
+    self.next.transform_value(Cow::Borrowed(&context), input)
+  }
+}
+
+#[derive(Debug)]
+pub struct VariableDefBuilder {
+  name: String,
+  value: Box<ExprBuilder>,
+  next: Box<ExprBuilder>,
+}
+
+impl FromParis for VariableDefBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::VariableDef)?;
+
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
+
+    let value = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+    let next = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    Ok(VariableDefBuilder { name, value, next })
+  }
+}
+
+impl Transform for VariableDefBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let name = self.name.clone();
+    let value = self.value.transform_value(context.clone(), input)?;
+
+    let mut context = context.into_owned();
+
+    context.variables.insert(name, value);
+
+    self.next.transform_value(Cow::Borrowed(&context), input)
   }
 }

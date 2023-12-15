@@ -63,11 +63,11 @@ Quick support reference:
 - [x] `.[<index>]`
 - [x] `.[<from> : <to>]`
 - [ ] `if (<expr>) <expr> else <expr>`
-- [ ] `let <name> = <expr>`
-- [ ] `$<name>`
+- [x] `let <name> = <expr>`
+- [x] `$<name>`
 - [x] `[for (<expr>) <expr>]`
 - [x] `{for (<expr>) <expr> : <expr>}`
-- [ ] `def <name>(<name>, <name>...) <expr>	`
+- [x] `def <name>(<name>, <name>...) <expr>	`
 - [x] `// <anything up to end of line>`
 - [x] `{ <key> : <expr> }`
 - [ ] `{ <key> : <expr>, * : . }`

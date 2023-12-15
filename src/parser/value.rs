@@ -145,21 +145,7 @@ pub enum ValueBuilder {
   Object(ObjectBuilder),
   Scope(ScopeBuilder),
   String(StringBuilder),
-}
-
-impl Transform for ValueBuilder {
-  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
-    match self {
-      ValueBuilder::Accessor(accessor) => accessor.transform_value(context, input),
-      ValueBuilder::Array(array) => array.transform_value(context, input),
-      ValueBuilder::Boolean(boolean) => boolean.transform_value(context, input),
-      ValueBuilder::Null(null) => null.transform_value(context, input),
-      ValueBuilder::Number(number) => number.transform_value(context, input),
-      ValueBuilder::Object(object) => object.transform_value(context, input),
-      ValueBuilder::Scope(scope) => scope.transform_value(context, input),
-      ValueBuilder::String(string) => string.transform_value(context, input),
-    }
-  }
+  Variable(VariableBuilder),
 }
 
 impl FromParis for ValueBuilder {
@@ -185,10 +171,46 @@ impl FromParis for ValueBuilder {
         Rule::String => {
           StringBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::String)
         }
+        Rule::Variable => {
+          VariableBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Variable)
+        }
         rule => Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned())),
       };
     }
 
     Err(JsltError::UnexpectedInput(Rule::EOI, "EOI".to_owned()))
+  }
+}
+
+impl Transform for ValueBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    match self {
+      ValueBuilder::Accessor(accessor) => accessor.transform_value(context, input),
+      ValueBuilder::Array(array) => array.transform_value(context, input),
+      ValueBuilder::Boolean(boolean) => boolean.transform_value(context, input),
+      ValueBuilder::Null(null) => null.transform_value(context, input),
+      ValueBuilder::Number(number) => number.transform_value(context, input),
+      ValueBuilder::Object(object) => object.transform_value(context, input),
+      ValueBuilder::Scope(scope) => scope.transform_value(context, input),
+      ValueBuilder::String(string) => string.transform_value(context, input),
+      ValueBuilder::Variable(variable) => variable.transform_value(context, input),
+    }
+  }
+}
+
+#[derive(Debug)]
+pub struct VariableBuilder(String);
+
+impl FromParis for VariableBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let pairs = expect_inner!(pairs, Rule::Variable)?;
+
+    Ok(VariableBuilder(pairs.as_str().to_owned()))
+  }
+}
+
+impl Transform for VariableBuilder {
+  fn transform_value(&self, context: Context<'_>, _: &Value) -> Result<Value> {
+    Ok(context.variables[&self.0].clone())
   }
 }

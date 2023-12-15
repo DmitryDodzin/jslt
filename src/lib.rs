@@ -844,4 +844,17 @@ mod tests {
 
     Ok(())
   }
+
+  #[rstest]
+  #[case("def my_add(a, b)\n $a + $b \n my_add(1, 2)", "3")]
+  #[case("def my_add(a, b)\n let foo = $a \n $foo + $b \n my_add(1, 2)", "3")]
+  fn function_def(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
 }

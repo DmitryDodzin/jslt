@@ -1,11 +1,12 @@
 Jslt = _{ SOI ~ Expr ~ EOI }
 
-Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope }
+Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope | Variable }
 
-Expr = _{ OperatorExpr |  Value }
+Expr = _{ OperatorExpr | VariableDef | FunctionDef |  Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
 Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal }
+
 Add = { "+" }
 Sub = { "-" }
 Mul = { "*" }
@@ -17,6 +18,10 @@ Lte = { "<=" }
 Equal = { "==" }
 And = { "and" }
 Or = { "or" }
+If = _{ "if" }
+For = _{ "for" }
+Def = _{ "def" }
+Let = _{ "let" }
 
 Scope = { "(" ~ Expr ~ ")" }
 
@@ -26,9 +31,9 @@ Accessor = {
 KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
 RangeAccessor = { Expr ~ ":" ~ Expr }
 
-Ident = @{ !(For | If) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
-
 FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
+
+FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 
 Array    = {
     "[" ~ "]"
@@ -37,10 +42,6 @@ Array    = {
 ArrayFor = {
     For ~ "(" ~ Expr ~ ")" ~ Expr ~ IfCondition?
 }
-
-
-If = _{ "if" }
-For = _{ "for" }
 
 Object    = {
     "{" ~ "}"
@@ -58,6 +59,10 @@ IfCondition = {
     If ~ "(" ~ Expr ~ ")"
 }
 
+Variable = { "$" ~ Ident }
+VariableDef = { Let ~ Ident ~ "=" ~ Expr ~ Expr? }
+
+
 String = ${ "\"" ~ Inner ~ "\"" }
 Inner  = @{ Char* }
 Char   =  {
@@ -65,6 +70,8 @@ Char   =  {
   | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
+
+Ident = @{ !(Def | For | If | Let) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
 
 Number = @{
     "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
@@ -74,6 +81,6 @@ Boolean = { "true" | "false" }
 
 Null = { "null" }
 
-COMMENT = { "//" ~ Inner ~ ("\n" | "\r" | "\r\n")? }
+COMMENT = { "//" ~ Inner ~ NEWLINE? }
 
-WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+WHITESPACE = _{ " " | "\t" | NEWLINE }
