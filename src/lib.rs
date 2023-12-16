@@ -761,6 +761,21 @@ mod tests {
   }
 
   #[rstest]
+  #[case("[[1,2], [3,4]]", "[1, 2, 3, 4]")]
+  #[case("[1, 2, 3, 4]", "[1, 2, 3, 4]")]
+  #[case("[1, [2, [3, [4, []]]]]", "[1, 2, 3, 4]")]
+  #[case("null", "null")]
+  fn function_flatten(#[case] input: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "flatten(.)".parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("[true, true, true]", "true")]
   #[case("[true, true, false]", "false")]
   #[case("null", "null")]

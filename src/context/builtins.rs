@@ -668,9 +668,22 @@ static_function! {
   }
 }
 
+fn flatten_array(value: &Value) -> Vec<Value> {
+  match value {
+    Value::Array(array) => array.iter().flat_map(flatten_array).collect(),
+    _ => vec![value.clone()],
+  }
+}
+
 static_function! {
-  pub fn flatten(_array: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn flatten(array: &Value) -> Result<Value> {
+    match array {
+      Value::Array(_) => Ok(Value::Array(flatten_array(array))),
+      Value::Null => Ok(Value::Null),
+      _ => Err(JsltError::InvalidInput(
+        "Input of flatten must be array".to_string(),
+      ))
+    }
   }
 }
 

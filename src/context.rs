@@ -116,7 +116,7 @@ impl Default for JsltContext {
     include_builtin!(functions, get_key, "get-key");
     include_builtin!(functions, array);
     include_builtin!(functions, is_array, "is-array");
-    // include_builtin!(functions, flatten);
+    include_builtin!(functions, flatten);
     include_builtin!(functions, all);
     include_builtin!(functions, any);
     include_builtin!(functions, zip);
