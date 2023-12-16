@@ -64,7 +64,7 @@ Quick support reference:
 - [x] `def <name>(<name>, <name>...) <expr> `
 - [x] `// <anything up to end of line>`
 - [x] `{ <key> : <expr> }`
-- [ ] `{ <key> : <expr>, * : . }`
+- [x] `{ <key> : <expr>, * : . }`
 - [x] `5 * 7 + 23.2`
 - [x] `7 < 5`
 - [x] `7 < 5 and .foo == "yes"`

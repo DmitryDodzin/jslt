@@ -70,7 +70,7 @@ Quick support reference:
 - [x] `def <name>(<name>, <name>...) <expr>	`
 - [x] `// <anything up to end of line>`
 - [x] `{ <key> : <expr> }`
-- [ ] `{ <key> : <expr>, * : . }`
+- [x] `{ <key> : <expr>, * : . }`
 - [x] `5 * 7 + 23.2`
 - [x] `7 < 5`
 - [x] `7 < 5 and .foo == "yes"`
@@ -79,7 +79,7 @@ Based on [Quick reference](https://github.com/schibsted/jslt#quick-references)
 
 ### Current Goals:
 
-- [ ] Create context for function registration and scopes for variables
+- [x] Create context for function registration and scopes for variables
 - [ ] Enable `#![no_std]` sooner than later for possible nodejs support *
 
 \* with `std` cargo flag for regular use.

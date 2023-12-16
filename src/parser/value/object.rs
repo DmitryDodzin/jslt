@@ -54,9 +54,18 @@ impl FromParis for ObjectBuilder {
 
           builder
             .inner
-            .push(ObjectBuilderInner::For(ObjectFor::from_pairs(
+            .push(ObjectBuilderInner::For(ObjectForBuilder::from_pairs(
               &mut inner_pairs,
             )?));
+        }
+        Rule::ObjectSpread => {
+          let mut pairs = pair.into_inner();
+
+          builder
+            .inner
+            .push(ObjectBuilderInner::Spread(ExprBuilder::from_pairs(
+              &mut pairs,
+            )?))
         }
         _ => unimplemented!("for Pair: {pair:#?}"),
       }
@@ -68,21 +77,20 @@ impl FromParis for ObjectBuilder {
 
 impl Transform for ObjectBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
-    let mut items = Vec::new();
+    let mut items = serde_json::Map::new();
 
     for inner in &self.inner {
       match inner {
         ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
-          items.push((
-            key
-              .transform_value(context.clone(), input)?
-              .as_str()
-              .expect("Should result in string")
-              .to_owned(),
-            value.transform_value(context.clone(), input)?,
-          ));
+          let key = key
+            .transform_value(context.clone(), input)?
+            .as_str()
+            .expect("Should result in string")
+            .to_owned();
+
+          items.insert(key, value.transform_value(context.clone(), input)?);
         }
-        ObjectBuilderInner::For(ObjectFor {
+        ObjectBuilderInner::For(ObjectForBuilder {
           source,
           output,
           condition,
@@ -97,27 +105,41 @@ impl Transform for ObjectBuilder {
               }
             }
 
-            items.push((
-              key
-                .transform_value(context.clone(), input)?
-                .as_str()
-                .expect("Should result in string")
-                .to_owned(),
-              value.transform_value(context.clone(), input)?,
-            ))
+            let key = key
+              .transform_value(context.clone(), input)?
+              .as_str()
+              .expect("Should result in string")
+              .to_owned();
+
+            items.insert(key, value.transform_value(context.clone(), input)?);
+          }
+        }
+        ObjectBuilderInner::Spread(expr) => {
+          let source = input.as_object().expect("Should be object");
+
+          for key in source.keys() {
+            if items.contains_key(key) {
+              continue;
+            }
+
+            items.insert(
+              key.clone(),
+              expr.transform_value(context.clone(), &source[key])?,
+            );
           }
         }
       }
     }
 
-    Ok(Value::Object(items.into_iter().collect()))
+    Ok(Value::Object(items))
   }
 }
 
 #[derive(Debug)]
 pub enum ObjectBuilderInner {
   Pair(PairBuilder),
-  For(ObjectFor),
+  For(ObjectForBuilder),
+  Spread(ExprBuilder),
 }
 
-pub type ObjectFor = ForBuilder<PairBuilder>;
+pub type ObjectForBuilder = ForBuilder<PairBuilder>;

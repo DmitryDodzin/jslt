@@ -869,4 +869,24 @@ mod tests {
 
     Ok(())
   }
+
+  #[rstest]
+  #[case(
+    r#"{"foo": number(.foo), *: . / 1000}"#,
+    r#"{"foo": "bar", "baz": 2000}"#,
+    r#"{"foo": null, "baz": 2}"#
+  )]
+  fn object_spread(
+    #[case] jslt: &str,
+    #[case] input: Value,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
 }

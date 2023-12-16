@@ -45,10 +45,13 @@ ArrayFor = {
 
 Object    = {
     "{" ~ "}"
-  | "{" ~ (Pair | ObjectFor) ~ ("," ~ (Pair | ObjectFor))* ~ "}"
+  | "{" ~ (Pair | ObjectFor) ~ ("," ~ (ObjectSpread | Pair | ObjectFor))* ~ "}"
 }
 ObjectFor = {
     For ~ "(" ~ Expr ~ ")" ~ Pair ~ IfCondition?
+}
+ObjectSpread = {
+    "*" ~ ":" ~ Expr
 }
 
 Pair = {
@@ -65,7 +68,6 @@ IfCondition = {
 
 Variable = { "$" ~ Ident }
 VariableDef = { Let ~ Ident ~ "=" ~ Expr ~ Expr? }
-
 
 String = ${ "\"" ~ Inner ~ "\"" }
 Inner  = @{ Char* }
