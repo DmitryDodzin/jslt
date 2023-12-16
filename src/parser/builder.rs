@@ -1,61 +1,53 @@
-use std::ops::Deref;
+use std::{borrow::Cow, sync::Arc};
 
-use enum_dispatch::enum_dispatch;
-use pest::iterators::Pairs;
+use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
 
 use crate::{
+  context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
-  parser::Rule,
+  expect_inner,
+  parser::{value::ValueBuilder, FromParis, Rule},
+  Transform,
 };
 
-pub trait FromParis: Sized {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self>;
-}
-
-#[enum_dispatch]
-pub trait Transform {
-  fn transform_value(&self, context: &Value) -> Result<Value>;
-}
-
 #[derive(Debug)]
-#[enum_dispatch(Transform)]
-pub enum JsltBuilder {
-  Accessor(AccessorBuilder),
-  Array(ArrayBuilder),
-  Boolean(BooleanBuilder),
-  Null(NullBuilder),
-  Number(NumberBuilder),
-  Object(ObjectBuilder),
-  String(StringBuilder),
+pub enum ExprBuilder {
+  Value(ValueBuilder),
+  IfStatement(IfStatementBuilder),
+  OperatorExpr(OperatorExprBuilder),
+  FunctionDef(FunctionDefBuilder),
+  FunctionCall(FunctionCallBuilder),
+  VariableDef(VariableDefBuilder),
 }
 
-impl FromParis for JsltBuilder {
+impl Transform for ExprBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    match self {
+      ExprBuilder::Value(value) => value.transform_value(context, input),
+      ExprBuilder::IfStatement(ifstmt) => ifstmt.transform_value(context, input),
+      ExprBuilder::FunctionCall(fcall) => fcall.transform_value(context, input),
+      ExprBuilder::FunctionDef(fdef) => fdef.transform_value(context, input),
+      ExprBuilder::OperatorExpr(oper_expr) => oper_expr.transform_value(context, input),
+      ExprBuilder::VariableDef(variable_def) => variable_def.transform_value(context, input),
+    }
+  }
+}
+
+impl FromParis for ExprBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    for pair in pairs {
+    while let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
-        Rule::Accessor => Ok(JsltBuilder::Accessor(AccessorBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::Array => Ok(JsltBuilder::Array(ArrayBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::COMMENT => continue,
-        Rule::Boolean => Ok(JsltBuilder::Boolean(BooleanBuilder(
-          pair
-            .as_str()
-            .parse()
-            .map_err(|_| JsltError::UnexpectedContent(Rule::Boolean))?,
-        ))),
-        Rule::Null => Ok(JsltBuilder::Null(NullBuilder)),
-        Rule::Number => Ok(JsltBuilder::Number(NumberBuilder(pair.as_str().parse()?))),
-        Rule::Object => Ok(JsltBuilder::Object(ObjectBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        Rule::String => Ok(JsltBuilder::String(StringBuilder::from_pairs(
-          &mut pair.into_inner(),
-        )?)),
-        rule => Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned())),
+        Rule::COMMENT => {
+          let _ = pairs.next();
+          continue;
+        }
+        Rule::IfStatement => IfStatementBuilder::from_pairs(pairs).map(ExprBuilder::IfStatement),
+        Rule::FunctionCall => FunctionCallBuilder::from_pairs(pairs).map(ExprBuilder::FunctionCall),
+        Rule::FunctionDef => FunctionDefBuilder::from_pairs(pairs).map(ExprBuilder::FunctionDef),
+        Rule::OperatorExpr => OperatorExprBuilder::from_pairs(pairs).map(ExprBuilder::OperatorExpr),
+        Rule::VariableDef => VariableDefBuilder::from_pairs(pairs).map(ExprBuilder::VariableDef),
+        _ => ValueBuilder::from_pairs(pairs).map(ExprBuilder::Value),
       };
     }
 
@@ -64,308 +56,282 @@ impl FromParis for JsltBuilder {
 }
 
 #[derive(Debug)]
-pub struct AccessorBuilder {
-  ident: String,
-  keys: Vec<KeyAccessorBuilder>,
-  nested: Option<Box<AccessorBuilder>>,
+pub enum OperatorBuilder {
+  Add,
+  Sub,
+  Div,
+  Mul,
+  And,
+  Or,
+  Gt,
+  Gte,
+  Lt,
+  Lte,
+  Equal,
 }
 
-impl FromParis for AccessorBuilder {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let mut ident = None;
-    let mut nested = None;
-    let mut keys = Vec::new();
-
-    for pair in pairs {
-      match pair.as_rule() {
-        Rule::Ident => ident = Some(pair.as_str()),
-        Rule::KeyAccessor => {
-          let inner = pair
-            .into_inner()
-            .next()
-            .ok_or(JsltError::UnexpectedContent(Rule::KeyAccessor))?;
-
-          match inner.as_rule() {
-            Rule::Number | Rule::String => {
-              keys.push(KeyAccessorBuilder::Index(inner.as_str().parse()?));
-            }
-            Rule::RangeAccessor => {
-              let mut inner = inner.into_inner();
-
-              let from = inner
-                .next()
-                .ok_or(JsltError::UnexpectedContent(Rule::RangeAccessor))?
-                .as_str()
-                .parse()?;
-
-              let to = inner
-                .next()
-                .ok_or(JsltError::UnexpectedContent(Rule::RangeAccessor))?
-                .as_str()
-                .parse()?;
-
-              keys.push(KeyAccessorBuilder::Range { from, to });
-            }
-            _ => return Err(JsltError::UnexpectedContent(Rule::KeyAccessor)),
-          }
-        }
-        Rule::Accessor => {
-          nested = Some(Box::new(AccessorBuilder::from_pairs(
-            &mut pair.into_inner(),
-          )?));
-        }
-        _ => break,
-      }
-    }
-
-    let ident = ident.unwrap_or("").to_owned();
-
-    Ok(AccessorBuilder {
-      ident,
-      keys,
-      nested,
-    })
-  }
+#[derive(Debug)]
+pub struct OperatorExprBuilder {
+  lhs: Box<ExprBuilder>,
+  operator: OperatorBuilder,
+  rhs: Box<ExprBuilder>,
 }
 
-impl Transform for AccessorBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
-    let mut value = (!self.ident.is_empty())
-      .then(|| &context[&self.ident])
-      .unwrap_or(context);
+macro_rules! impl_operator_parse {
+  ($ident:ident, $op:ident) => {
+    if let Some((index, _)) = $ident
+      .iter()
+      .enumerate()
+      .find(|(_, pair)| matches!(pair.as_rule(), Rule::$op))
+    {
+      let mut right = $ident.split_off(index).split_off(1);
 
-    let mut temp_value_store = None;
-
-    for key in &self.keys {
-      let next_value = match key {
-        KeyAccessorBuilder::Index(Value::String(str_key)) => &value[str_key],
-        KeyAccessorBuilder::Index(Value::Number(num_key)) => num_key
-          .as_u64()
-          .map(|index| &value[index as usize])
-          .ok_or(JsltError::IndexOutOfRange)?,
-        KeyAccessorBuilder::Range { from, to } => {
-          let from = from
-            .as_u64()
-            .ok_or(JsltError::RangeNotNumber(from.clone()))?;
-
-          let to = to.as_u64().ok_or(JsltError::RangeNotNumber(to.clone()))?;
-
-          temp_value_store.replace(Value::Array(
-            (from..to)
-              .map(|index| value[index as usize].clone())
-              .collect::<Vec<_>>(),
-          ));
-
-          temp_value_store.as_ref().unwrap()
-        }
-        _ => return Err(JsltError::IndexOutOfRange),
+      let lhs = if $ident.len() == 1 {
+        Box::new(ExprBuilder::from_pairs(&mut Pairs::single(
+          $ident.pop().expect("Should have at least one value"),
+        ))?)
+      } else {
+        Box::new(ExprBuilder::OperatorExpr(
+          OperatorExprBuilder::from_inner_vec($ident)?,
+        ))
       };
 
-      value = next_value;
-    }
+      let rhs = if right.len() == 1 {
+        Box::new(ExprBuilder::from_pairs(&mut Pairs::single(
+          right.pop().expect("Should have at least one value"),
+        ))?)
+      } else {
+        Box::new(ExprBuilder::OperatorExpr(
+          OperatorExprBuilder::from_inner_vec(right)?,
+        ))
+      };
 
-    match &self.nested {
-      Some(nested) => nested.transform_value(value),
-      None => Ok(value.clone()),
+      return Ok(OperatorExprBuilder {
+        lhs,
+        rhs,
+        operator: OperatorBuilder::$op,
+      });
     }
+  };
+}
+
+impl OperatorExprBuilder {
+  pub fn from_inner_vec(mut pairs: Vec<Pair<Rule>>) -> Result<Self> {
+    impl_operator_parse!(pairs, And);
+    impl_operator_parse!(pairs, Or);
+    impl_operator_parse!(pairs, Gt);
+    impl_operator_parse!(pairs, Gte);
+    impl_operator_parse!(pairs, Lt);
+    impl_operator_parse!(pairs, Lte);
+    impl_operator_parse!(pairs, Equal);
+    impl_operator_parse!(pairs, Add);
+    impl_operator_parse!(pairs, Sub);
+    impl_operator_parse!(pairs, Mul);
+    impl_operator_parse!(pairs, Div);
+
+    Err(JsltError::InvalidInput(format!(
+      "Could not evaluate the expession {pairs:#?}",
+    )))
   }
 }
 
-#[derive(Debug)]
-pub enum KeyAccessorBuilder {
-  Index(Value),
-  Range { from: Value, to: Value },
-}
-
-#[derive(Debug, Default)]
-pub struct ArrayBuilder {
-  inner: Vec<ArrayBuilderInner>,
-}
-
-impl FromParis for ArrayBuilder {
+impl FromParis for OperatorExprBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let mut builder = ArrayBuilder::default();
+    let pairs = expect_inner!(pairs, Rule::OperatorExpr)?;
 
-    while let Some(next) = pairs.peek() {
-      match next.as_rule() {
-        Rule::COMMENT => {
-          let _ = pairs.next();
+    Self::from_inner_vec(pairs.collect())
+  }
+}
+
+impl Transform for OperatorExprBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let left = self.lhs.transform_value(context.clone(), input)?;
+    let right = self.rhs.transform_value(context, input)?;
+
+    match self.operator {
+      OperatorBuilder::Add => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64")).into(),
+          ))
         }
-        Rule::ArrayFor => {
-          builder
-            .inner
-            .push(ArrayBuilderInner::For(ArrayFor::from_pairs(
-              &mut pairs
-                .next()
-                .expect("is not empty because of peek")
-                .into_inner(),
-            )?));
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") + right.as_i64().expect("Should be i64")).into(),
+          ))
         }
-        _ => builder
-          .inner
-          .push(ArrayBuilderInner::Item(JsltBuilder::from_pairs(pairs)?)),
-      }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
+        ),
+        (Value::String(left), Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
+        (Value::Object(left), Value::Object(right)) => Ok(Value::Object(
+          left
+            .into_iter()
+            .chain(right)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        )),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Add (\"+\") operator must be 2 numbers or strings (got \"{left} + {right}\")"
+        ))),
+      },
+      OperatorBuilder::Sub => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") - right.as_i64().expect("Should be i64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") - right.as_f64().expect("Should be f64")).into(),
+        ),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Sub (\"-\") operator must be 2 numbers (got \"{left} - {right}\")"
+        ))),
+      },
+      OperatorBuilder::Mul => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") * right.as_i64().expect("Should be i64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") * right.as_f64().expect("Should be f64")).into(),
+        ),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Mul (\"*\") operator must be 2 numbers (got \"{left} * {right}\")"
+        ))),
+      },
+      OperatorBuilder::Div => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Number(
+            (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Number(
+            (left.as_i64().expect("Should be i64") / right.as_i64().expect("Should be i64")).into(),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(
+          (left.as_f64().expect("Should be f64") / right.as_f64().expect("Should be f64")).into(),
+        ),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Div (\"/\") operator must be 2 numbers (got \"{left} / {right}\")"
+        ))),
+      },
+      OperatorBuilder::And => match (&left, &right) {
+        (Value::Bool(true), Value::Bool(true)) => Ok(Value::Bool(true)),
+        (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "And (\"and\") operator must be 2 booleans (got \"{left} and {right}\")"
+        ))),
+      },
+      OperatorBuilder::Or => match (&left, &right) {
+        (Value::Bool(_) | Value::Null, Value::Bool(true))
+        | (Value::Bool(true), Value::Bool(_) | Value::Null) => Ok(Value::Bool(true)),
+        (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "Or (\"/\") operator must be 2 booleans (got \"{left} or {right}\")"
+        ))),
+      },
+      OperatorBuilder::Gt => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") > right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") > right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") > right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left > right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
+        ))),
+      },
+      OperatorBuilder::Gte => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") >= right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") >= right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") >= right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left >= right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
+        ))),
+      },
+      OperatorBuilder::Lt => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") < right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") < right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") < right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left < right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
+        ))),
+      },
+      OperatorBuilder::Lte => match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
+          Ok(Value::Bool(
+            left.as_u64().expect("Should be u64") <= right.as_u64().expect("Should be u64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => {
+          Ok(Value::Bool(
+            left.as_i64().expect("Should be i64") <= right.as_i64().expect("Should be i64"),
+          ))
+        }
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Bool(
+          left.as_f64().expect("Should be f64") <= right.as_f64().expect("Should be f64"),
+        )),
+        (Value::String(left), Value::String(right)) => Ok(Value::Bool(left <= right)),
+        _ => Err(JsltError::InvalidInput(format!(
+          "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
+        ))),
+      },
+      OperatorBuilder::Equal => Ok(Value::Bool(left == right)),
     }
-
-    Ok(builder)
   }
-}
-
-impl Transform for ArrayBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
-    let mut items = Vec::new();
-
-    for inner in &self.inner {
-      match inner {
-        ArrayBuilderInner::Item(jslt) => items.push(jslt.transform_value(context)?),
-        ArrayBuilderInner::For(ArrayFor { source, output }) => {
-          let source = source.transform_value(context)?;
-
-          for context in source.as_array().expect("Should be array") {
-            items.push(output.transform_value(context)?);
-          }
-        }
-      }
-    }
-
-    Ok(Value::Array(items))
-  }
-}
-
-#[derive(Debug)]
-pub enum ArrayBuilderInner {
-  Item(JsltBuilder),
-  For(ArrayFor),
-}
-
-#[derive(Debug)]
-pub struct BooleanBuilder(bool);
-
-impl Transform for BooleanBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Bool(self.0))
-  }
-}
-
-#[derive(Debug)]
-pub struct NumberBuilder(pub(super) serde_json::Number);
-
-impl Transform for NumberBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Number(self.0.clone()))
-  }
-}
-
-#[derive(Debug)]
-pub struct PairBuilder(JsltBuilder, JsltBuilder);
-
-impl FromParis for PairBuilder {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let inner = pairs
-      .next()
-      .ok_or(JsltError::UnexpectedContent(Rule::Pair))?;
-
-    if !matches!(inner.as_rule(), Rule::Pair) {
-      return Err(JsltError::UnexpectedInput(
-        Rule::Pair,
-        inner.as_str().to_owned(),
-      ));
-    }
-
-    let mut inner = inner.into_inner();
-
-    let key = JsltBuilder::from_pairs(&mut inner)?;
-    let value = JsltBuilder::from_pairs(&mut inner)?;
-
-    Ok(PairBuilder(key, value))
-  }
-}
-
-#[derive(Debug, Default)]
-pub struct ObjectBuilder {
-  inner: Vec<ObjectBuilderInner>,
-}
-
-impl FromParis for ObjectBuilder {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let mut builder = ObjectBuilder::default();
-
-    for pair in pairs {
-      match pair.as_rule() {
-        Rule::COMMENT => continue,
-        Rule::Pair => {
-          builder
-            .inner
-            .push(ObjectBuilderInner::Pair(PairBuilder::from_pairs(
-              &mut Pairs::single(pair),
-            )?));
-        }
-        Rule::ObjectFor => {
-          let mut inner_pairs = pair.into_inner();
-
-          builder
-            .inner
-            .push(ObjectBuilderInner::For(ObjectFor::from_pairs(
-              &mut inner_pairs,
-            )?));
-        }
-        _ => unimplemented!("for Pair: {pair:#?}"),
-      }
-    }
-
-    Ok(builder)
-  }
-}
-
-impl Transform for ObjectBuilder {
-  fn transform_value(&self, context: &Value) -> Result<Value> {
-    let mut items = Vec::new();
-
-    for inner in &self.inner {
-      match inner {
-        ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
-          items.push((
-            key
-              .transform_value(context)?
-              .as_str()
-              .expect("Should result in string")
-              .to_owned(),
-            value.transform_value(context)?,
-          ));
-        }
-        ObjectBuilderInner::For(ObjectFor { source, output }) => {
-          let PairBuilder(key, value) = output.deref();
-          let source = source.transform_value(context)?;
-
-          for context in source.as_array().expect("Should be array") {
-            items.push((
-              key
-                .transform_value(context)?
-                .as_str()
-                .expect("Should result in string")
-                .to_owned(),
-              value.transform_value(context)?,
-            ))
-          }
-        }
-      }
-    }
-
-    Ok(Value::Object(items.into_iter().collect()))
-  }
-}
-
-#[derive(Debug)]
-pub enum ObjectBuilderInner {
-  Pair(PairBuilder),
-  For(ObjectFor),
 }
 
 #[derive(Debug)]
 pub struct ForBuilder<B> {
-  source: Box<JsltBuilder>,
+  pub(super) source: Box<ExprBuilder>,
 
-  output: Box<B>,
+  pub(super) condition: Option<ExprBuilder>,
+
+  pub(super) output: Box<B>,
 }
 
 impl<B> FromParis for ForBuilder<B>
@@ -373,50 +339,203 @@ where
   B: FromParis,
 {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let source = JsltBuilder::from_pairs(pairs)?;
+    let source = ExprBuilder::from_pairs(pairs)?;
 
     let output = B::from_pairs(pairs)?;
 
+    let condition = match pairs.peek() {
+      Some(pair) if matches!(pair.as_rule(), Rule::IfCondition) => {
+        Some(ExprBuilder::from_pairs(&mut pair.into_inner())?)
+      }
+      _ => None,
+    };
+
     Ok(ForBuilder {
       source: Box::new(source),
+      condition,
       output: Box::new(output),
     })
   }
 }
 
-type ArrayFor = ForBuilder<JsltBuilder>;
-type ObjectFor = ForBuilder<PairBuilder>;
-
 #[derive(Debug)]
-pub struct StringBuilder(String);
+pub struct IfStatementBuilder {
+  condition: Box<ExprBuilder>,
+  value: Box<ExprBuilder>,
+  fallback: Option<Box<ExprBuilder>>,
+}
 
-impl FromParis for StringBuilder {
+impl FromParis for IfStatementBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let inner = pairs
-      .next()
-      .ok_or(JsltError::UnexpectedContent(Rule::String))?;
+    let mut pairs = expect_inner!(pairs, Rule::IfStatement)?;
 
-    let rule = inner.as_rule();
+    let mut condition_paris = expect_inner!(pairs, Rule::IfCondition)?;
 
-    if matches!(rule, Rule::Inner) {
-      Ok(StringBuilder(inner.as_str().to_owned()))
+    let condition = ExprBuilder::from_pairs(&mut condition_paris).map(Box::new)?;
+
+    let value = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    let fallback = (pairs.len() != 0)
+      .then(|| ExprBuilder::from_pairs(&mut pairs).map(Box::new))
+      .transpose()?;
+
+    Ok(IfStatementBuilder {
+      condition,
+      value,
+      fallback,
+    })
+  }
+}
+
+impl Transform for IfStatementBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    if builtins::boolean_cast(&self.condition.transform_value(context.clone(), input)?) {
+      self.value.transform_value(context, input)
     } else {
-      Err(JsltError::UnexpectedInput(rule, inner.as_str().to_owned()))
+      self
+        .fallback
+        .as_ref()
+        .map(|fallback| fallback.transform_value(context, input))
+        .unwrap_or_else(|| Ok(Value::Null))
     }
   }
 }
 
-impl Transform for StringBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::String(self.0.clone()))
+#[derive(Debug)]
+pub struct FunctionCallBuilder {
+  name: String,
+  arguments: Vec<ExprBuilder>,
+}
+
+impl FromParis for FunctionCallBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::FunctionCall)?;
+
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
+
+    let arguments = pairs
+      .map(|pair| ExprBuilder::from_pairs(&mut Pairs::single(pair)))
+      .collect::<Result<_>>()?;
+
+    Ok(FunctionCallBuilder { name, arguments })
+  }
+}
+
+impl Transform for FunctionCallBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let function = context
+      .functions
+      .get(&self.name)
+      .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?
+      .clone();
+
+    function.call(
+      context.clone(),
+      &self
+        .arguments
+        .iter()
+        .map(|arg| arg.transform_value(context.clone(), input))
+        .collect::<Result<Vec<_>>>()?,
+    )
   }
 }
 
 #[derive(Debug)]
-pub struct NullBuilder;
+pub struct FunctionDefBuilder {
+  name: String,
+  arguments: Vec<String>,
+  expr: Arc<ExprBuilder>,
+  next: Box<ExprBuilder>,
+}
 
-impl Transform for NullBuilder {
-  fn transform_value(&self, _: &Value) -> Result<Value> {
-    Ok(Value::Null)
+impl FromParis for FunctionDefBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::FunctionDef)?;
+
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
+
+    let mut arguments = Vec::new();
+
+    while pairs
+      .peek()
+      .map(|pair| matches!(pair.as_rule(), Rule::Ident))
+      .unwrap_or(false)
+    {
+      arguments.push(pairs.next().expect("was peeked").as_str().to_owned());
+    }
+
+    let expr = ExprBuilder::from_pairs(&mut pairs).map(Arc::new)?;
+
+    let next = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    Ok(FunctionDefBuilder {
+      name,
+      arguments,
+      expr,
+      next,
+    })
+  }
+}
+
+impl Transform for FunctionDefBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let function = DynamicFunction {
+      name: self.name.clone(),
+      arguments: self.arguments.clone(),
+      expr: self.expr.clone(),
+    };
+
+    let mut context = context.into_owned();
+
+    context
+      .functions
+      .insert(self.name.clone(), JsltFunction::Dynamic(function));
+
+    self.next.transform_value(Cow::Borrowed(&context), input)
+  }
+}
+
+#[derive(Debug)]
+pub struct VariableDefBuilder {
+  name: String,
+  value: Box<ExprBuilder>,
+  next: Box<ExprBuilder>,
+}
+
+impl FromParis for VariableDefBuilder {
+  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
+    let mut pairs = expect_inner!(pairs, Rule::VariableDef)?;
+
+    let name = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .as_str()
+      .to_owned();
+
+    let value = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+    let next = ExprBuilder::from_pairs(&mut pairs).map(Box::new)?;
+
+    Ok(VariableDefBuilder { name, value, next })
+  }
+}
+
+impl Transform for VariableDefBuilder {
+  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+    let name = self.name.clone();
+    let value = self.value.transform_value(context.clone(), input)?;
+
+    let mut context = context.into_owned();
+
+    context.variables.insert(name, value);
+
+    self.next.transform_value(Cow::Borrowed(&context), input)
   }
 }
