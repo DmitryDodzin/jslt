@@ -383,8 +383,9 @@ static_function! {
     match (value, re) {
       (Value::Null, _) => Ok(Value::Bool(false)),
       (Value::String(value), Value::String(re)) => {
-        let re = Regex::new(re)
+        let re: Regex = re.replace("\\\\", "\\").parse()
           .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing regex: {err}")))?;
+
         Ok(Value::Bool(re.is_match(value)))
       }
       _ => Err(JsltError::InvalidInput(
@@ -487,14 +488,30 @@ static_function! {
 }
 
 static_function! {
-  pub fn starts_with(_tested: &Value, _prefix: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn starts_with(tested: &Value, prefix: &Value) -> Result<Value> {
+    match (tested, prefix) {
+      (Value::Null, _) => Ok(Value::Bool(false)),
+      (Value::String(tested), Value::String(prefix)) => {
+        Ok(Value::Bool(tested.starts_with(prefix)))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of starts-with must be string".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
-  pub fn ends_with(_tested: &Value, _prefix: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn ends_with(tested: &Value, prefix: &Value) -> Result<Value> {
+    match (tested, prefix) {
+      (Value::Null, _) => Ok(Value::Bool(false)),
+      (Value::String(tested), Value::String(prefix)) => {
+        Ok(Value::Bool(tested.ends_with(prefix)))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of ends-with must be string".to_string(),
+      )),
+    }
   }
 }
 
@@ -518,8 +535,19 @@ static_function! {
 }
 
 static_function! {
-  pub fn replace(_value: &Value, _regexp: &Value, _out: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn replace(value: &Value, re: &Value, out: &Value) -> Result<Value> {
+    match (value, re, out) {
+      (Value::Null, _, _) => Ok(Value::Null),
+      (Value::String(value), Value::String(re), Value::String(out)) => {
+        let re: Regex = re.replace("\\\\", "\\").parse()
+          .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing regex: {err}")))?;
+
+        Ok(Value::String(re.replace_all(value, out).to_string()))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of replace must be string".to_string(),
+      )),
+    }
   }
 }
 

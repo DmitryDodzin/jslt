@@ -102,11 +102,11 @@ impl Default for JsltContext {
     include_builtin!(functions, lowercase);
     include_builtin!(functions, uppercase);
     include_builtin!(functions, sha256_hex, "sha256-hex");
-    // include_builtin!(functions, starts_with, "starts-with");
-    // include_builtin!(functions, ends_with, "ends-with");
+    include_builtin!(functions, starts_with, "starts-with");
+    include_builtin!(functions, ends_with, "ends-with");
     include_builtin!(functions, from_json, "from-json");
     include_builtin!(functions, to_json, "to-json");
-    // include_builtin!(functions, replace);
+    include_builtin!(functions, replace);
     include_builtin!(functions, trim);
     include_builtin!(functions, uuid);
     include_builtin!(functions, boolean);

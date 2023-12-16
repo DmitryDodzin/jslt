@@ -560,6 +560,34 @@ mod tests {
   }
 
   #[rstest]
+  #[case(r#"starts-with("prohibition", "pro")"#, "true")]
+  #[case(r#"starts-with("prohibition", "pre")"#, "false")]
+  #[case(r#"starts-with(null, "pre")"#, "false")]
+  fn function_starts_with(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(r#"ends-with("prohibition", "pro")"#, "false")]
+  #[case(r#"ends-with("prohibition", "ion")"#, "true")]
+  #[case(r#"ends-with(null, "pre")"#, "false")]
+  fn function_ends_with(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("\"[1,2]\"", "[1, 2]", None)]
   #[case("\"[1,2\"", "\"BAD\"", Some("BAD".into()))]
   #[case("null", "null", None)]
@@ -591,6 +619,23 @@ mod tests {
     let jslt: Jslt = "to-json(.)".parse()?;
 
     let output = jslt.transform_value(&input)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(r#"replace("abc def ghi", " ", "-")"#, "\"abc-def-ghi\"")]
+  #[case(r#"replace("abc def ghi", "\\s+", "-")"#, "\"abc-def-ghi\"")]
+  #[case(r#"replace(null, "\\s+", "-")"#, "null")]
+  #[case(r#"replace("   whoah", "^\\s+", "")"#, "\"whoah\"")]
+  #[case(r#"replace("abc def ghi", "[a-z]", "x")"#, "\"xxx xxx xxx\"")]
+  #[case(r#"replace("abc def ghi", "[a-z]+", "x")"#, "\"x x x\"")]
+  fn function_replace(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
 
     assert_eq!(output, expected);
 
