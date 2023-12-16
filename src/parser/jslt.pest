@@ -87,6 +87,6 @@ Boolean = { "true" | "false" }
 
 Null = { "null" }
 
-COMMENT = { "//" ~ Inner ~ NEWLINE? }
+COMMENT = { "//" ~ (!NEWLINE ~ ANY)* }
 
 WHITESPACE = _{ " " | "\t" | NEWLINE }

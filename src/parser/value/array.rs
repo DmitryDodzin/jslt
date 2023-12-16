@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use pest::iterators::Pairs;
 use serde_json::Value;
 
@@ -64,14 +66,32 @@ impl Transform for ArrayBuilder {
         }) => {
           let source = source.transform_value(context.clone(), input)?;
 
-          for input in source.as_array().expect("Should be array") {
+          let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
+            Box::new(
+              source
+                .as_object()
+                .expect("Should be object")
+                .into_iter()
+                .map(|(key, value)| Cow::Owned(serde_json::json!({ "key": key, "value": value }))),
+            )
+          } else {
+            Box::new(
+              source
+                .as_array()
+                .expect("Should be array")
+                .iter()
+                .map(Cow::Borrowed),
+            )
+          };
+
+          for input in input_iter {
             if let Some(condition) = condition {
-              if !builtins::boolean_cast(&condition.transform_value(context.clone(), input)?) {
+              if !builtins::boolean_cast(&condition.transform_value(context.clone(), &input)?) {
                 continue;
               }
             }
 
-            items.push(output.transform_value(context.clone(), input)?);
+            items.push(output.transform_value(context.clone(), &input)?);
           }
         }
       }

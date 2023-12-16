@@ -164,6 +164,13 @@ impl Transform for OperatorExprBuilder {
           (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
         ),
         (Value::String(left), Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
+        (Value::Object(left), Value::Object(right)) => Ok(Value::Object(
+          left
+            .into_iter()
+            .chain(right)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        )),
         _ => Err(JsltError::InvalidInput(format!(
           "Add (\"+\") operator must be 2 numbers or strings (got \"{left} + {right}\")"
         ))),
@@ -423,9 +430,11 @@ impl Transform for FunctionCallBuilder {
     let function = context
       .functions
       .get(&self.name)
-      .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?;
+      .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?
+      .clone();
 
     function.call(
+      context.clone(),
       &self
         .arguments
         .iter()
@@ -482,7 +491,6 @@ impl Transform for FunctionDefBuilder {
       name: self.name.clone(),
       arguments: self.arguments.clone(),
       expr: self.expr.clone(),
-      context: context.clone().into_owned(),
     };
 
     let mut context = context.into_owned();

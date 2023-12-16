@@ -101,6 +101,35 @@ mod tests {
   use super::*;
 
   #[test]
+  fn example_flatten() -> Result<()> {
+    let jslt: Jslt = include_str!("../examples/flatten.jslt").parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(
+      output,
+      json!({
+        "menu_popup_menuitem": [
+          {
+            "value": "Open",
+            "onclick": "OpenDoc()"
+          },
+          {
+            "value": "Close",
+            "onclick": "CloseDoc()"
+          }
+        ],
+        "data": [
+          [1, 2, 3, 4, 5],
+          [6, 7, 8, 9, 10]
+        ]
+      })
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn basic() -> Result<()> {
     let jslt: Jslt = r#"
     {

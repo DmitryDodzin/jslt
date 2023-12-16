@@ -13,10 +13,10 @@ pub enum JsltFunction {
 }
 
 impl JsltFunction {
-  pub fn call(&self, arguments: &[Value]) -> Result<Value> {
+  pub fn call(&self, context: Context<'_>, arguments: &[Value]) -> Result<Value> {
     match self {
       JsltFunction::Static(function) => function(arguments),
-      JsltFunction::Dynamic(function) => function.call(arguments),
+      JsltFunction::Dynamic(function) => function.call(context, arguments),
     }
   }
 }
@@ -35,18 +35,17 @@ pub struct DynamicFunction {
   pub name: String,
   pub arguments: Vec<String>,
   pub expr: Arc<ExprBuilder>,
-  pub context: JsltContext,
 }
 
 impl DynamicFunction {
-  pub fn call(&self, arguments: &[Value]) -> Result<Value> {
+  pub fn call(&self, context: Context<'_>, arguments: &[Value]) -> Result<Value> {
     let arguments = self
       .arguments
       .iter()
       .zip(arguments)
       .map(|(name, value)| (name.clone(), value.clone()));
 
-    let mut context = self.context.clone();
+    let mut context = context.into_owned();
 
     context.variables.extend(arguments);
 

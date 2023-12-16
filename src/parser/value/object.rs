@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{borrow::Cow, ops::Deref};
 
 use pest::iterators::Pairs;
 use serde_json::Value;
@@ -98,20 +98,38 @@ impl Transform for ObjectBuilder {
           let PairBuilder(key, value) = output.deref();
           let source = source.transform_value(context.clone(), input)?;
 
-          for input in source.as_array().expect("Should be array") {
+          let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
+            Box::new(
+              source
+                .as_object()
+                .expect("Should be object")
+                .into_iter()
+                .map(|(key, value)| Cow::Owned(serde_json::json!({ "key": key, "value": value }))),
+            )
+          } else {
+            Box::new(
+              source
+                .as_array()
+                .expect("Should be array")
+                .iter()
+                .map(Cow::Borrowed),
+            )
+          };
+
+          for input in input_iter {
             if let Some(condition) = condition {
-              if !boolean_cast(&condition.transform_value(context.clone(), input)?) {
+              if !boolean_cast(&condition.transform_value(context.clone(), &input)?) {
                 continue;
               }
             }
 
             let key = key
-              .transform_value(context.clone(), input)?
+              .transform_value(context.clone(), &input)?
               .as_str()
               .expect("Should result in string")
               .to_owned();
 
-            items.insert(key, value.transform_value(context.clone(), input)?);
+            items.insert(key, value.transform_value(context.clone(), &input)?);
           }
         }
         ObjectBuilderInner::Spread(expr) => {
