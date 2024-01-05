@@ -1,6 +1,11 @@
 #! /bin/env node
-const fs = require("fs");
 
-if (!fs.existsSync(`./bin/${process.platform}-${process.arch}.node`) && !fs.existsSync(`./bin/index.node`)) {
-	process.exit(1);
+try {
+	require(`jslt-node-${process.platform}-${process.arch}/jslt.node`);
+} catch (e) {
+	const fs = require("fs");
+
+	if (!fs.existsSync(`./bin/index.node`)) {
+		process.exit(1);
+	}
 }
