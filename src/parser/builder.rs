@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
@@ -145,7 +145,9 @@ impl FromParis for OperatorExprBuilder {
 
 impl Transform for OperatorExprBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
-    let left = self.lhs.transform_value(context.clone(), input)?;
+    let left = self
+      .lhs
+      .transform_value(Context::Borrowed(&context), input)?;
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
@@ -389,7 +391,11 @@ impl FromParis for IfStatementBuilder {
 
 impl Transform for IfStatementBuilder {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
-    if builtins::boolean_cast(&self.condition.transform_value(context.clone(), input)?) {
+    if builtins::boolean_cast(
+      &self
+        .condition
+        .transform_value(Context::Borrowed(&context), input)?,
+    ) {
       self.value.transform_value(context, input)
     } else {
       self
@@ -434,11 +440,11 @@ impl Transform for FunctionCallBuilder {
       .clone();
 
     function.call(
-      context.clone(),
+      Context::Borrowed(&context),
       &self
         .arguments
         .iter()
-        .map(|arg| arg.transform_value(context.clone(), input))
+        .map(|arg| arg.transform_value(Context::Borrowed(&context), input))
         .collect::<Result<Vec<_>>>()?,
     )
   }
@@ -486,20 +492,19 @@ impl FromParis for FunctionDefBuilder {
 }
 
 impl Transform for FunctionDefBuilder {
-  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+  fn transform_value(&self, mut context: Context<'_>, input: &Value) -> Result<Value> {
     let function = DynamicFunction {
       name: self.name.clone(),
       arguments: self.arguments.clone(),
       expr: self.expr.clone(),
     };
 
-    let mut context = context.into_owned();
-
     context
+      .to_mut()
       .functions
       .insert(self.name.clone(), JsltFunction::Dynamic(function));
 
-    self.next.transform_value(Cow::Borrowed(&context), input)
+    self.next.transform_value(context, input)
   }
 }
 
@@ -528,14 +533,14 @@ impl FromParis for VariableDefBuilder {
 }
 
 impl Transform for VariableDefBuilder {
-  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
+  fn transform_value(&self, mut context: Context<'_>, input: &Value) -> Result<Value> {
     let name = self.name.clone();
-    let value = self.value.transform_value(context.clone(), input)?;
+    let value = self
+      .value
+      .transform_value(Context::Borrowed(&context), input)?;
 
-    let mut context = context.into_owned();
+    context.to_mut().variables.insert(name, value);
 
-    context.variables.insert(name, value);
-
-    self.next.transform_value(Cow::Borrowed(&context), input)
+    self.next.transform_value(context, input)
   }
 }

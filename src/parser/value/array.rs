@@ -58,13 +58,15 @@ impl Transform for ArrayBuilder {
 
     for inner in &self.inner {
       match inner {
-        ArrayBuilderInner::Item(jslt) => items.push(jslt.transform_value(context.clone(), input)?),
+        ArrayBuilderInner::Item(jslt) => {
+          items.push(jslt.transform_value(Context::Borrowed(&context), input)?)
+        }
         ArrayBuilderInner::For(ArrayFor {
           source,
           condition,
           output,
         }) => {
-          let source = source.transform_value(context.clone(), input)?;
+          let source = source.transform_value(Context::Borrowed(&context), input)?;
 
           let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
             Box::new(
@@ -86,12 +88,14 @@ impl Transform for ArrayBuilder {
 
           for input in input_iter {
             if let Some(condition) = condition {
-              if !builtins::boolean_cast(&condition.transform_value(context.clone(), &input)?) {
+              if !builtins::boolean_cast(
+                &condition.transform_value(Context::Borrowed(&context), &input)?,
+              ) {
                 continue;
               }
             }
 
-            items.push(output.transform_value(context.clone(), &input)?);
+            items.push(output.transform_value(Context::Borrowed(&context), &input)?);
           }
         }
       }

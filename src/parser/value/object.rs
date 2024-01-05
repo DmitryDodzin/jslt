@@ -83,12 +83,15 @@ impl Transform for ObjectBuilder {
       match inner {
         ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
           let key = key
-            .transform_value(context.clone(), input)?
+            .transform_value(Context::Borrowed(&context), input)?
             .as_str()
             .expect("Should result in string")
             .to_owned();
 
-          items.insert(key, value.transform_value(context.clone(), input)?);
+          items.insert(
+            key,
+            value.transform_value(Context::Borrowed(&context), input)?,
+          );
         }
         ObjectBuilderInner::For(ObjectForBuilder {
           source,
@@ -96,7 +99,7 @@ impl Transform for ObjectBuilder {
           condition,
         }) => {
           let PairBuilder(key, value) = output.deref();
-          let source = source.transform_value(context.clone(), input)?;
+          let source = source.transform_value(Context::Borrowed(&context), input)?;
 
           let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
             Box::new(
@@ -118,18 +121,21 @@ impl Transform for ObjectBuilder {
 
           for input in input_iter {
             if let Some(condition) = condition {
-              if !boolean_cast(&condition.transform_value(context.clone(), &input)?) {
+              if !boolean_cast(&condition.transform_value(Context::Borrowed(&context), &input)?) {
                 continue;
               }
             }
 
             let key = key
-              .transform_value(context.clone(), &input)?
+              .transform_value(Context::Borrowed(&context), &input)?
               .as_str()
               .expect("Should result in string")
               .to_owned();
 
-            items.insert(key, value.transform_value(context.clone(), &input)?);
+            items.insert(
+              key,
+              value.transform_value(Context::Borrowed(&context), &input)?,
+            );
           }
         }
         ObjectBuilderInner::Spread(expr) => {
@@ -142,7 +148,7 @@ impl Transform for ObjectBuilder {
 
             items.insert(
               key.clone(),
-              expr.transform_value(context.clone(), &source[key])?,
+              expr.transform_value(Context::Borrowed(&context), &source[key])?,
             );
           }
         }

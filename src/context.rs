@@ -38,20 +38,16 @@ pub struct DynamicFunction {
 }
 
 impl DynamicFunction {
-  pub fn call(&self, context: Context<'_>, arguments: &[Value]) -> Result<Value> {
+  pub fn call(&self, mut context: Context<'_>, arguments: &[Value]) -> Result<Value> {
     let arguments = self
       .arguments
       .iter()
       .zip(arguments)
       .map(|(name, value)| (name.clone(), value.clone()));
 
-    let mut context = context.into_owned();
+    context.to_mut().variables.extend(arguments);
 
-    context.variables.extend(arguments);
-
-    self
-      .expr
-      .transform_value(Cow::Borrowed(&context), &Value::Null)
+    self.expr.transform_value(context, &Value::Null)
   }
 }
 
