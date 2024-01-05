@@ -1,17 +1,16 @@
 {
-  "name": "jslt-node-darwin-arm64",
+  "name": "jslt-node-linux-x64",
   "version": "0.0.1",
   "description": "Jslt",
-  "main": "index.js",
   "scripts": {
-    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/darwin-arm64.node -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics  --release --target aarch64-apple-darwin",
+    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/linux-x64.node -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics  --release --target x86_64-unknown-linux-gnu",
     "prepack": "pnpm run build"
   },
   "devDependencies": {
     "cargo-cp-artifact": "^0.1"
   },
   "exports": {
-    "./jslt.node": "./lib/darwin-arm64.node",
+    "./jslt.node": "./lib/linux-x64.node",
     "./package": "./package.json"
   },
   "engine": {
@@ -19,10 +18,13 @@
     "glibc": ">=2.26"
   },
   "os": [
-    "darwin"
+    "linux"
+  ],
+  "libc": [
+    "glibc"
   ],
   "cpu": [
-    "arm64"
+    "x64"
   ],
   "repository": {
     "type": "git",

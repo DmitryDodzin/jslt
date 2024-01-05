@@ -12,13 +12,19 @@ importers:
         specifier: ^0.1
         version: 0.1.8
 
-  distros/darwin-arm64:
+  distributions/darwin-arm64:
     devDependencies:
       cargo-cp-artifact:
         specifier: ^0.1
         version: 0.1.8
 
-  distros/darwin-x64:
+  distributions/darwin-x86:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linux-x64:
     devDependencies:
       cargo-cp-artifact:
         specifier: ^0.1
