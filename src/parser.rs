@@ -6,7 +6,7 @@ use pest::iterators::Pairs;
 
 use crate::error::Result;
 
-pub trait FromParis: Sized {
+pub trait FromPairs: Sized {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self>;
 }
 

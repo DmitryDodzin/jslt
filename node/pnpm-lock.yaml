@@ -18,6 +18,12 @@ importers:
         specifier: ^0.1
         version: 0.1.8
 
+  distros/darwin-x64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
 packages:
 
   /cargo-cp-artifact@0.1.8:
