@@ -1,7 +1,7 @@
 var jslt = null;
 
 try {
-  jslt = require(`./bin/${process.platform}-${process.arch}.node`);
+  jslt = require(`jslt-node-${process.platform}-${process.arch}/jslt.node`);
 } catch (_) {
   jslt = require('./bin/index.node');
 }
