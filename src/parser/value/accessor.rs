@@ -10,13 +10,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct AccessorBuilder {
+pub struct AccessorParser {
   ident: String,
-  keys: Vec<KeyAccessorBuilder>,
-  nested: Option<Box<AccessorBuilder>>,
+  keys: Vec<KeyAccessorParser>,
+  nested: Option<Box<AccessorParser>>,
 }
 
-impl FromPairs for AccessorBuilder {
+impl FromPairs for AccessorParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Accessor)?;
 
@@ -35,7 +35,7 @@ impl FromPairs for AccessorBuilder {
 
           match inner.as_rule() {
             Rule::Number | Rule::String => {
-              keys.push(KeyAccessorBuilder::Index(inner.as_str().parse()?));
+              keys.push(KeyAccessorParser::Index(inner.as_str().parse()?));
             }
             Rule::RangeAccessor => {
               let mut inner = inner.into_inner();
@@ -52,13 +52,13 @@ impl FromPairs for AccessorBuilder {
                 .as_str()
                 .parse()?;
 
-              keys.push(KeyAccessorBuilder::Range { from, to });
+              keys.push(KeyAccessorParser::Range { from, to });
             }
             _ => return Err(JsltError::UnexpectedContent(Rule::KeyAccessor)),
           }
         }
         Rule::Accessor => {
-          nested = Some(Box::new(AccessorBuilder::from_pairs(&mut Pairs::single(
+          nested = Some(Box::new(AccessorParser::from_pairs(&mut Pairs::single(
             pair,
           ))?));
         }
@@ -68,7 +68,7 @@ impl FromPairs for AccessorBuilder {
 
     let ident = ident.unwrap_or("").to_owned();
 
-    Ok(AccessorBuilder {
+    Ok(AccessorParser {
       ident,
       keys,
       nested,
@@ -76,7 +76,7 @@ impl FromPairs for AccessorBuilder {
   }
 }
 
-impl Transform for AccessorBuilder {
+impl Transform for AccessorParser {
   #[allow(clippy::only_used_in_recursion)]
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut value = (!self.ident.is_empty())
@@ -87,12 +87,12 @@ impl Transform for AccessorBuilder {
 
     for key in &self.keys {
       let next_value = match key {
-        KeyAccessorBuilder::Index(Value::String(str_key)) => &value[str_key],
-        KeyAccessorBuilder::Index(Value::Number(num_key)) => num_key
+        KeyAccessorParser::Index(Value::String(str_key)) => &value[str_key],
+        KeyAccessorParser::Index(Value::Number(num_key)) => num_key
           .as_u64()
           .map(|index| &value[index as usize])
           .ok_or(JsltError::IndexOutOfRange)?,
-        KeyAccessorBuilder::Range { from, to } => {
+        KeyAccessorParser::Range { from, to } => {
           let from = from
             .as_u64()
             .ok_or(JsltError::RangeNotNumber(from.clone()))?;
@@ -121,7 +121,7 @@ impl Transform for AccessorBuilder {
 }
 
 #[derive(Debug)]
-pub enum KeyAccessorBuilder {
+pub enum KeyAccessorParser {
   Index(Value),
   Range { from: Value, to: Value },
 }

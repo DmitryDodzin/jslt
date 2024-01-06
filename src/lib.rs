@@ -25,7 +25,7 @@ pub trait Transform {
 
 #[derive(Debug)]
 pub struct Jslt {
-  builder: ExprBuilder,
+  builder: ExprParser,
   context: JsltContext,
 }
 
@@ -51,8 +51,8 @@ impl FromStr for Jslt {
   type Err = JsltError;
 
   fn from_str(value: &str) -> Result<Self> {
-    let mut pairs = JsltParser::parse(Rule::Jslt, value).map_err(Box::new)?;
-    let builder = ExprBuilder::from_pairs(&mut pairs)?;
+    let mut pairs = JsltGrammar::parse(Rule::Jslt, value).map_err(Box::new)?;
+    let builder = ExprParser::from_pairs(&mut pairs)?;
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })

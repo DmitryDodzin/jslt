@@ -12,4 +12,4 @@ pub trait FromPairs: Sized {
 
 #[derive(pest_derive::Parser)]
 #[grammar = "./src/parser/jslt.pest"]
-pub struct JsltParser;
+pub struct JsltGrammar;

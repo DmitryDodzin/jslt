@@ -6,8 +6,8 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{
-    builder::ExprBuilder,
-    value::{accessor::AccessorBuilder, array::ArrayBuilder, object::ObjectBuilder},
+    builder::ExprParser,
+    value::{accessor::AccessorParser, array::ArrayParser, object::ObjectParser},
     FromPairs, Rule,
   },
   Transform,
@@ -18,9 +18,9 @@ pub mod array;
 pub mod object;
 
 #[derive(Debug)]
-pub struct BooleanBuilder(bool);
+pub struct BooleanParser(bool);
 
-impl FromPairs for BooleanBuilder {
+impl FromPairs for BooleanParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
       Rule::Boolean,
@@ -30,7 +30,7 @@ impl FromPairs for BooleanBuilder {
     let rule = pair.as_rule();
 
     if matches!(rule, Rule::Boolean) {
-      Ok(BooleanBuilder(
+      Ok(BooleanParser(
         pair
           .as_str()
           .parse()
@@ -42,25 +42,25 @@ impl FromPairs for BooleanBuilder {
   }
 }
 
-impl Transform for BooleanBuilder {
+impl Transform for BooleanParser {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::Bool(self.0))
   }
 }
 
 #[derive(Debug)]
-pub struct NullBuilder;
+pub struct NullParser;
 
-impl Transform for NullBuilder {
+impl Transform for NullParser {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::Null)
   }
 }
 
 #[derive(Debug)]
-pub struct NumberBuilder(serde_json::Number);
+pub struct NumberParser(serde_json::Number);
 
-impl FromPairs for NumberBuilder {
+impl FromPairs for NumberParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
       Rule::Number,
@@ -70,7 +70,7 @@ impl FromPairs for NumberBuilder {
     let rule = pair.as_rule();
 
     if matches!(rule, Rule::Number) {
-      Ok(NumberBuilder(
+      Ok(NumberParser(
         pair
           .as_str()
           .parse()
@@ -82,35 +82,35 @@ impl FromPairs for NumberBuilder {
   }
 }
 
-impl Transform for NumberBuilder {
+impl Transform for NumberParser {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::Number(self.0.clone()))
   }
 }
 
 #[derive(Debug)]
-pub struct ScopeBuilder(Box<ExprBuilder>);
+pub struct ScopeParser(Box<ExprParser>);
 
-impl FromPairs for ScopeBuilder {
+impl FromPairs for ScopeParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::Scope)?;
 
-    ExprBuilder::from_pairs(&mut pairs)
+    ExprParser::from_pairs(&mut pairs)
       .map(Box::new)
-      .map(ScopeBuilder)
+      .map(ScopeParser)
   }
 }
 
-impl Transform for ScopeBuilder {
+impl Transform for ScopeParser {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     self.0.transform_value(context, input)
   }
 }
 
 #[derive(Debug)]
-pub struct StringBuilder(String);
+pub struct StringParser(String);
 
-impl FromPairs for StringBuilder {
+impl FromPairs for StringParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::String)?;
 
@@ -122,57 +122,51 @@ impl FromPairs for StringBuilder {
     let rule = inner.as_rule();
 
     if matches!(rule, Rule::Inner) {
-      Ok(StringBuilder(inner.as_str().to_owned()))
+      Ok(StringParser(inner.as_str().to_owned()))
     } else {
       Err(JsltError::UnexpectedInput(rule, inner.as_str().to_owned()))
     }
   }
 }
 
-impl Transform for StringBuilder {
+impl Transform for StringParser {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::String(self.0.clone()))
   }
 }
 
 #[derive(Debug)]
-pub enum ValueBuilder {
-  Accessor(AccessorBuilder),
-  Array(ArrayBuilder),
-  Boolean(BooleanBuilder),
-  Null(NullBuilder),
-  Number(NumberBuilder),
-  Object(ObjectBuilder),
-  Scope(ScopeBuilder),
-  String(StringBuilder),
-  Variable(VariableBuilder),
+pub enum ValueParser {
+  Accessor(AccessorParser),
+  Array(ArrayParser),
+  Boolean(BooleanParser),
+  Null(NullParser),
+  Number(NumberParser),
+  Object(ObjectParser),
+  Scope(ScopeParser),
+  String(StringParser),
+  Variable(VariableParser),
 }
 
-impl FromPairs for ValueBuilder {
+impl FromPairs for ValueParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     for pair in pairs {
       return match pair.as_rule() {
         Rule::Accessor => {
-          AccessorBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Accessor)
+          AccessorParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Accessor)
         }
-        Rule::Array => ArrayBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Array),
+        Rule::Array => ArrayParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Array),
         Rule::Boolean => {
-          BooleanBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Boolean)
+          BooleanParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Boolean)
         }
         Rule::COMMENT => continue,
-        Rule::Null => Ok(ValueBuilder::Null(NullBuilder)),
-        Rule::Number => {
-          NumberBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Number)
-        }
-        Rule::Object => {
-          ObjectBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Object)
-        }
-        Rule::Scope => ScopeBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Scope),
-        Rule::String => {
-          StringBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::String)
-        }
+        Rule::Null => Ok(ValueParser::Null(NullParser)),
+        Rule::Number => NumberParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Number),
+        Rule::Object => ObjectParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Object),
+        Rule::Scope => ScopeParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Scope),
+        Rule::String => StringParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::String),
         Rule::Variable => {
-          VariableBuilder::from_pairs(&mut Pairs::single(pair)).map(ValueBuilder::Variable)
+          VariableParser::from_pairs(&mut Pairs::single(pair)).map(ValueParser::Variable)
         }
         rule => Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned())),
       };
@@ -182,34 +176,34 @@ impl FromPairs for ValueBuilder {
   }
 }
 
-impl Transform for ValueBuilder {
+impl Transform for ValueParser {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     match self {
-      ValueBuilder::Accessor(accessor) => accessor.transform_value(context, input),
-      ValueBuilder::Array(array) => array.transform_value(context, input),
-      ValueBuilder::Boolean(boolean) => boolean.transform_value(context, input),
-      ValueBuilder::Null(null) => null.transform_value(context, input),
-      ValueBuilder::Number(number) => number.transform_value(context, input),
-      ValueBuilder::Object(object) => object.transform_value(context, input),
-      ValueBuilder::Scope(scope) => scope.transform_value(context, input),
-      ValueBuilder::String(string) => string.transform_value(context, input),
-      ValueBuilder::Variable(variable) => variable.transform_value(context, input),
+      ValueParser::Accessor(accessor) => accessor.transform_value(context, input),
+      ValueParser::Array(array) => array.transform_value(context, input),
+      ValueParser::Boolean(boolean) => boolean.transform_value(context, input),
+      ValueParser::Null(null) => null.transform_value(context, input),
+      ValueParser::Number(number) => number.transform_value(context, input),
+      ValueParser::Object(object) => object.transform_value(context, input),
+      ValueParser::Scope(scope) => scope.transform_value(context, input),
+      ValueParser::String(string) => string.transform_value(context, input),
+      ValueParser::Variable(variable) => variable.transform_value(context, input),
     }
   }
 }
 
 #[derive(Debug)]
-pub struct VariableBuilder(String);
+pub struct VariableParser(String);
 
-impl FromPairs for VariableBuilder {
+impl FromPairs for VariableParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Variable)?;
 
-    Ok(VariableBuilder(pairs.as_str().to_owned()))
+    Ok(VariableParser(pairs.as_str().to_owned()))
   }
 }
 
-impl Transform for VariableBuilder {
+impl Transform for VariableParser {
   fn transform_value(&self, context: Context<'_>, _: &Value) -> Result<Value> {
     Ok(context.variables[&self.0].clone())
   }

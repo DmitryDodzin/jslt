@@ -8,36 +8,36 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{
-    builder::{ExprBuilder, ForBuilder},
+    builder::{ExprParser, ForParser},
     FromPairs, Rule,
   },
   Transform,
 };
 
 #[derive(Debug)]
-pub struct PairBuilder(ExprBuilder, ExprBuilder);
+pub struct PairParser(ExprParser, ExprParser);
 
-impl FromPairs for PairBuilder {
+impl FromPairs for PairParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut inner = expect_inner!(pairs, Rule::Pair)?;
 
-    let key = ExprBuilder::from_pairs(&mut inner)?;
-    let value = ExprBuilder::from_pairs(&mut inner)?;
+    let key = ExprParser::from_pairs(&mut inner)?;
+    let value = ExprParser::from_pairs(&mut inner)?;
 
-    Ok(PairBuilder(key, value))
+    Ok(PairParser(key, value))
   }
 }
 
 #[derive(Debug, Default)]
-pub struct ObjectBuilder {
-  inner: Vec<ObjectBuilderInner>,
+pub struct ObjectParser {
+  inner: Vec<ObjectParserInner>,
 }
 
-impl FromPairs for ObjectBuilder {
+impl FromPairs for ObjectParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Object)?;
 
-    let mut builder = ObjectBuilder::default();
+    let mut builder = ObjectParser::default();
 
     for pair in pairs {
       match pair.as_rule() {
@@ -45,7 +45,7 @@ impl FromPairs for ObjectBuilder {
         Rule::Pair => {
           builder
             .inner
-            .push(ObjectBuilderInner::Pair(PairBuilder::from_pairs(
+            .push(ObjectParserInner::Pair(PairParser::from_pairs(
               &mut Pairs::single(pair),
             )?));
         }
@@ -54,7 +54,7 @@ impl FromPairs for ObjectBuilder {
 
           builder
             .inner
-            .push(ObjectBuilderInner::For(ObjectForBuilder::from_pairs(
+            .push(ObjectParserInner::For(ObjectForParser::from_pairs(
               &mut inner_pairs,
             )?));
         }
@@ -63,7 +63,7 @@ impl FromPairs for ObjectBuilder {
 
           builder
             .inner
-            .push(ObjectBuilderInner::Spread(ExprBuilder::from_pairs(
+            .push(ObjectParserInner::Spread(ExprParser::from_pairs(
               &mut pairs,
             )?))
         }
@@ -75,13 +75,13 @@ impl FromPairs for ObjectBuilder {
   }
 }
 
-impl Transform for ObjectBuilder {
+impl Transform for ObjectParser {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = serde_json::Map::new();
 
     for inner in &self.inner {
       match inner {
-        ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
+        ObjectParserInner::Pair(PairParser(key, value)) => {
           let key = key
             .transform_value(Context::Borrowed(&context), input)?
             .as_str()
@@ -93,12 +93,12 @@ impl Transform for ObjectBuilder {
             value.transform_value(Context::Borrowed(&context), input)?,
           );
         }
-        ObjectBuilderInner::For(ObjectForBuilder {
+        ObjectParserInner::For(ObjectForParser {
           source,
           output,
           condition,
         }) => {
-          let PairBuilder(key, value) = output.deref();
+          let PairParser(key, value) = output.deref();
           let source = source.transform_value(Context::Borrowed(&context), input)?;
 
           let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
@@ -138,7 +138,7 @@ impl Transform for ObjectBuilder {
             );
           }
         }
-        ObjectBuilderInner::Spread(expr) => {
+        ObjectParserInner::Spread(expr) => {
           let source = input.as_object().expect("Should be object");
 
           for key in source.keys() {
@@ -160,10 +160,10 @@ impl Transform for ObjectBuilder {
 }
 
 #[derive(Debug)]
-pub enum ObjectBuilderInner {
-  Pair(PairBuilder),
-  For(ObjectForBuilder),
-  Spread(ExprBuilder),
+pub enum ObjectParserInner {
+  Pair(PairParser),
+  For(ObjectForParser),
+  Spread(ExprParser),
 }
 
-pub type ObjectForBuilder = ForBuilder<PairBuilder>;
+pub type ObjectForParser = ForParser<PairParser>;

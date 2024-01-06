@@ -8,22 +8,22 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{
-    builder::{ExprBuilder, ForBuilder},
+    builder::{ExprParser, ForParser},
     FromPairs, Rule,
   },
   Transform,
 };
 
 #[derive(Debug, Default)]
-pub struct ArrayBuilder {
-  inner: Vec<ArrayBuilderInner>,
+pub struct ArrayParser {
+  inner: Vec<ArrayParserInner>,
 }
 
-impl FromPairs for ArrayBuilder {
+impl FromPairs for ArrayParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::Array)?;
 
-    let mut builder = ArrayBuilder::default();
+    let mut builder = ArrayParser::default();
 
     while let Some(next) = pairs.peek() {
       match next.as_rule() {
@@ -33,7 +33,7 @@ impl FromPairs for ArrayBuilder {
         Rule::ArrayFor => {
           builder
             .inner
-            .push(ArrayBuilderInner::For(ArrayFor::from_pairs(
+            .push(ArrayParserInner::For(ArrayFor::from_pairs(
               &mut pairs
                 .next()
                 .expect("is not empty because of peek")
@@ -42,9 +42,7 @@ impl FromPairs for ArrayBuilder {
         }
         _ => builder
           .inner
-          .push(ArrayBuilderInner::Item(ExprBuilder::from_pairs(
-            &mut pairs,
-          )?)),
+          .push(ArrayParserInner::Item(ExprParser::from_pairs(&mut pairs)?)),
       }
     }
 
@@ -52,16 +50,16 @@ impl FromPairs for ArrayBuilder {
   }
 }
 
-impl Transform for ArrayBuilder {
+impl Transform for ArrayParser {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = Vec::new();
 
     for inner in &self.inner {
       match inner {
-        ArrayBuilderInner::Item(jslt) => {
+        ArrayParserInner::Item(jslt) => {
           items.push(jslt.transform_value(Context::Borrowed(&context), input)?)
         }
-        ArrayBuilderInner::For(ArrayFor {
+        ArrayParserInner::For(ArrayFor {
           source,
           condition,
           output,
@@ -106,23 +104,23 @@ impl Transform for ArrayBuilder {
 }
 
 #[derive(Debug)]
-pub enum ArrayBuilderInner {
-  Item(ExprBuilder),
+pub enum ArrayParserInner {
+  Item(ExprParser),
   For(ArrayFor),
 }
 
 #[derive(Debug)]
-pub struct PairBuilder(ExprBuilder, ExprBuilder);
+pub struct PairParser(ExprParser, ExprParser);
 
-impl FromPairs for PairBuilder {
+impl FromPairs for PairParser {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut inner = expect_inner!(pairs, Rule::Pair)?;
 
-    let key = ExprBuilder::from_pairs(&mut inner)?;
-    let value = ExprBuilder::from_pairs(&mut inner)?;
+    let key = ExprParser::from_pairs(&mut inner)?;
+    let value = ExprParser::from_pairs(&mut inner)?;
 
-    Ok(PairBuilder(key, value))
+    Ok(PairParser(key, value))
   }
 }
 
-pub type ArrayFor = ForBuilder<ExprBuilder>;
+pub type ArrayFor = ForParser<ExprParser>;
