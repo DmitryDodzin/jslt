@@ -8,7 +8,7 @@ use crate::{
   parser::{
     builder::ExprBuilder,
     value::{accessor::AccessorBuilder, array::ArrayBuilder, object::ObjectBuilder},
-    FromParis, Rule,
+    FromPairs, Rule,
   },
   Transform,
 };
@@ -20,7 +20,7 @@ pub mod object;
 #[derive(Debug)]
 pub struct BooleanBuilder(bool);
 
-impl FromParis for BooleanBuilder {
+impl FromPairs for BooleanBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
       Rule::Boolean,
@@ -60,7 +60,7 @@ impl Transform for NullBuilder {
 #[derive(Debug)]
 pub struct NumberBuilder(serde_json::Number);
 
-impl FromParis for NumberBuilder {
+impl FromPairs for NumberBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
       Rule::Number,
@@ -91,7 +91,7 @@ impl Transform for NumberBuilder {
 #[derive(Debug)]
 pub struct ScopeBuilder(Box<ExprBuilder>);
 
-impl FromParis for ScopeBuilder {
+impl FromPairs for ScopeBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::Scope)?;
 
@@ -110,7 +110,7 @@ impl Transform for ScopeBuilder {
 #[derive(Debug)]
 pub struct StringBuilder(String);
 
-impl FromParis for StringBuilder {
+impl FromPairs for StringBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::String)?;
 
@@ -148,7 +148,7 @@ pub enum ValueBuilder {
   Variable(VariableBuilder),
 }
 
-impl FromParis for ValueBuilder {
+impl FromPairs for ValueBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     for pair in pairs {
       return match pair.as_rule() {
@@ -201,7 +201,7 @@ impl Transform for ValueBuilder {
 #[derive(Debug)]
 pub struct VariableBuilder(String);
 
-impl FromParis for VariableBuilder {
+impl FromPairs for VariableBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Variable)?;
 

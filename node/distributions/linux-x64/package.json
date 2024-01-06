@@ -1,0 +1,38 @@
+{
+  "name": "jslt-node-linux-x64",
+  "version": "0.0.1",
+  "description": "Jslt",
+  "scripts": {
+    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/linux-x64.node -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics  --release --target x86_64-unknown-linux-gnu",
+    "prepack": "pnpm run build"
+  },
+  "devDependencies": {
+    "cargo-cp-artifact": "^0.1"
+  },
+  "exports": {
+    "./jslt.node": "./lib/linux-x64.node",
+    "./package": "./package.json"
+  },
+  "engine": {
+    "node": ">=12.0.0",
+    "glibc": ">=2.26"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DmitryDodzin/jslt.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/DmitryDodzin/jslt/issues"
+  },
+  "homepage": "https://github.com/DmitryDodzin/jslt#readme"
+}

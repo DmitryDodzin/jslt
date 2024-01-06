@@ -1,7 +1,13 @@
 var jslt = null;
 
+const detectLibc = require('detect-libc');
+
+const runtimeLibc = () => 
+  detectLibc.isNonGlibcLinuxSync()
+    ? detectLibc.familySync() : '';
+
 try {
-  jslt = require(`./bin/${process.platform}-${process.arch}.node`);
+  jslt = require(`jslt-node-${process.platform}${runtimeLibc()}-${process.arch}/jslt.node`);
 } catch (_) {
   jslt = require('./bin/index.node');
 }

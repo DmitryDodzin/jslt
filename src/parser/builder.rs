@@ -7,7 +7,7 @@ use crate::{
   context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
   expect_inner,
-  parser::{value::ValueBuilder, FromParis, Rule},
+  parser::{value::ValueBuilder, FromPairs, Rule},
   Transform,
 };
 
@@ -34,7 +34,7 @@ impl Transform for ExprBuilder {
   }
 }
 
-impl FromParis for ExprBuilder {
+impl FromPairs for ExprBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     while let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
@@ -135,7 +135,7 @@ impl OperatorExprBuilder {
   }
 }
 
-impl FromParis for OperatorExprBuilder {
+impl FromPairs for OperatorExprBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::OperatorExpr)?;
 
@@ -336,9 +336,9 @@ pub struct ForBuilder<B> {
   pub(super) output: Box<B>,
 }
 
-impl<B> FromParis for ForBuilder<B>
+impl<B> FromPairs for ForBuilder<B>
 where
-  B: FromParis,
+  B: FromPairs,
 {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let source = ExprBuilder::from_pairs(pairs)?;
@@ -367,7 +367,7 @@ pub struct IfStatementBuilder {
   fallback: Option<Box<ExprBuilder>>,
 }
 
-impl FromParis for IfStatementBuilder {
+impl FromPairs for IfStatementBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::IfStatement)?;
 
@@ -413,7 +413,7 @@ pub struct FunctionCallBuilder {
   arguments: Vec<ExprBuilder>,
 }
 
-impl FromParis for FunctionCallBuilder {
+impl FromPairs for FunctionCallBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::FunctionCall)?;
 
@@ -458,7 +458,7 @@ pub struct FunctionDefBuilder {
   next: Box<ExprBuilder>,
 }
 
-impl FromParis for FunctionDefBuilder {
+impl FromPairs for FunctionDefBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::FunctionDef)?;
 
@@ -515,7 +515,7 @@ pub struct VariableDefBuilder {
   next: Box<ExprBuilder>,
 }
 
-impl FromParis for VariableDefBuilder {
+impl FromPairs for VariableDefBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::VariableDef)?;
 

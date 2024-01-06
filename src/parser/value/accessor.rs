@@ -5,7 +5,7 @@ use crate::{
   context::Context,
   error::{JsltError, Result},
   expect_inner,
-  parser::{FromParis, Rule},
+  parser::{FromPairs, Rule},
   Transform,
 };
 
@@ -16,7 +16,7 @@ pub struct AccessorBuilder {
   nested: Option<Box<AccessorBuilder>>,
 }
 
-impl FromParis for AccessorBuilder {
+impl FromPairs for AccessorBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Accessor)?;
 

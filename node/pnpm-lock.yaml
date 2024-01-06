@@ -4,10 +4,72 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-devDependencies:
-  cargo-cp-artifact:
-    specifier: ^0.1
-    version: 0.1.8
+importers:
+
+  .:
+    dependencies:
+      detect-libc:
+        specifier: ^2.0.2
+        version: 2.0.2
+    optionalDependencies:
+      jslt-node-darwin-arm64:
+        specifier: 0.0.1
+        version: link:distributions/darwin-arm64
+      jslt-node-darwin-x86:
+        specifier: 0.0.1
+        version: link:distributions/darwin-x86
+      jslt-node-linux-arm64:
+        specifier: 0.0.1
+        version: link:distributions/linux-arm64
+      jslt-node-linux-x64:
+        specifier: 0.0.1
+        version: link:distributions/linux-x64
+      jslt-node-linuxmusl-arm64:
+        specifier: 0.0.1
+        version: link:distributions/linuxmusl-arm64
+      jslt-node-linuxmusl-x64:
+        specifier: 0.0.1
+        version: link:distributions/linuxmusl-x64
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/darwin-arm64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/darwin-x86:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linux-arm64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linux-x64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linuxmusl-arm64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linuxmusl-x64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
 
 packages:
 
@@ -15,3 +77,8 @@ packages:
     resolution: {integrity: sha512-3j4DaoTrsCD1MRkTF2Soacii0Nx7UHCce0EwUf4fHnggwiE4fbmF2AbnfzayR36DF8KGadfh7M/Yfy625kgPlA==}
     hasBin: true
     dev: true
+
+  /detect-libc@2.0.2:
+    resolution: {integrity: sha512-UX6sGumvvqSaXgdKGUsgZWqcUyIXZ/vZTrlRT/iobiKhGL0zL4d3osHj3uqllWJK+i+sixDS/3COVEOFbupFyw==}
+    engines: {node: '>=8'}
+    dev: false

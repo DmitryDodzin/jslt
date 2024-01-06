@@ -2,18 +2,33 @@
   "name": "jslt-node",
   "version": "0.0.1",
   "description": "Jslt",
+  "files": [
+    "src/*",
+    "check-bin.js",
+    "index.d.ts",
+    "index.js",
+    "Cargo.toml"
+  ],
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo build -p jslt-node --message-format=json-render-diagnostics",
-    "zigbuild": "cargo-cp-artifact -nc ${ARTIFACT_PATH:=./bin/index.node} -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics",
-    "clean": "rm -rf bin",
+    "build": "cargo-cp-artifact -nc ./bin/index.node -- cargo build -p jslt-node --message-format=json-render-diagnostics",
     "install": "node ./check-bin.js || pnpm run build",
-    "prepack": "pnpm run clean && make bin",
     "test": "cargo test"
+  },
+  "dependencies": {
+    "detect-libc": "^2.0.2"
   },
   "devDependencies": {
     "cargo-cp-artifact": "^0.1"
+  },
+  "optionalDependencies": {
+    "jslt-node-darwin-arm64": "0.0.1",
+    "jslt-node-darwin-x86": "0.0.1",
+    "jslt-node-linux-arm64": "0.0.1",
+    "jslt-node-linux-x64": "0.0.1",
+    "jslt-node-linuxmusl-arm64": "0.0.1",
+    "jslt-node-linuxmusl-x64": "0.0.1"
   },
   "engine": {
     "node": ">=12.0.0"

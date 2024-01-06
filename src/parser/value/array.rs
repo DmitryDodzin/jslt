@@ -9,7 +9,7 @@ use crate::{
   expect_inner,
   parser::{
     builder::{ExprBuilder, ForBuilder},
-    FromParis, Rule,
+    FromPairs, Rule,
   },
   Transform,
 };
@@ -19,7 +19,7 @@ pub struct ArrayBuilder {
   inner: Vec<ArrayBuilderInner>,
 }
 
-impl FromParis for ArrayBuilder {
+impl FromPairs for ArrayBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::Array)?;
 
@@ -114,7 +114,7 @@ pub enum ArrayBuilderInner {
 #[derive(Debug)]
 pub struct PairBuilder(ExprBuilder, ExprBuilder);
 
-impl FromParis for PairBuilder {
+impl FromPairs for PairBuilder {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut inner = expect_inner!(pairs, Rule::Pair)?;
 
