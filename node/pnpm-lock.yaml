@@ -14,9 +14,18 @@ importers:
       jslt-node-darwin-x86:
         specifier: 0.0.1
         version: link:distributions/darwin-x86
+      jslt-node-linux-arm64:
+        specifier: 0.0.1
+        version: link:distributions/linux-arm64
       jslt-node-linux-x64:
         specifier: 0.0.1
         version: link:distributions/linux-x64
+      jslt-node-linuxmusl-arm64:
+        specifier: 0.0.1
+        version: link:distributions/linuxmusl-arm64
+      jslt-node-linuxmusl-x64:
+        specifier: 0.0.1
+        version: link:distributions/linuxmusl-x64
     devDependencies:
       cargo-cp-artifact:
         specifier: ^0.1
@@ -34,7 +43,25 @@ importers:
         specifier: ^0.1
         version: 0.1.8
 
+  distributions/linux-arm64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
   distributions/linux-x64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linuxmusl-arm64:
+    devDependencies:
+      cargo-cp-artifact:
+        specifier: ^0.1
+        version: 0.1.8
+
+  distributions/linuxmusl-x64:
     devDependencies:
       cargo-cp-artifact:
         specifier: ^0.1
