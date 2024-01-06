@@ -16,6 +16,9 @@
     "install": "node ./check-bin.js || pnpm run build",
     "test": "cargo test"
   },
+  "dependencies": {
+    "detect-libc": "^2.0.2"
+  },
   "devDependencies": {
     "cargo-cp-artifact": "^0.1"
   },

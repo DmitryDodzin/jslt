@@ -1,11 +1,17 @@
 #! /bin/env node
 
-try {
-	require(`jslt-node-${process.platform}-${process.arch}/jslt.node`);
-} catch (e) {
-	const fs = require("fs");
+const detectLibc = require('detect-libc');
 
-	if (!fs.existsSync(`./bin/index.node`)) {
-		process.exit(1);
-	}
+const runtimeLibc = () => 
+  detectLibc.isNonGlibcLinuxSync()
+    ? detectLibc.familySync() : '';
+
+try {
+  require(`jslt-node-${process.platform}${runtimeLibc()}-${process.arch}/jslt.node`);
+} catch (e) {
+  const fs = require("fs");
+
+  if (!fs.existsSync(`./bin/index.node`)) {
+    process.exit(1);
+  }
 }
