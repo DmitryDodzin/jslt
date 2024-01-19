@@ -1,4 +1,8 @@
-use std::borrow::Cow;
+use alloc::{
+  borrow::{Cow, ToOwned},
+  boxed::Box,
+  vec::Vec,
+};
 
 use pest::iterators::Pairs;
 use serde_json::Value;

@@ -1,3 +1,5 @@
+use alloc::{format, vec::Vec};
+
 use neon::prelude::*;
 use serde_json::Value as JsonValue;
 

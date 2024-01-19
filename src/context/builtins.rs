@@ -1,12 +1,17 @@
 #![allow(dead_code)]
 
-use std::{
-  collections::hash_map::DefaultHasher,
-  hash::{Hash, Hasher},
-  time::SystemTime,
+use alloc::{
+  borrow::ToOwned,
+  format,
+  string::{String, ToString},
+  vec,
+  vec::Vec,
 };
+use core::hash::{Hash, Hasher};
+#[cfg(feature = "std")]
+use std::time::SystemTime;
 
-use regex::Regex;
+use regex_lite::Regex;
 use serde_json::{json, Value};
 use url::Url;
 use uuid::Uuid;
@@ -348,9 +353,10 @@ fn hash_value<T: Hasher>(hasher: &mut T, value: &Value) {
   }
 }
 
+#[cfg(feature = "std")]
 static_function! {
   pub fn hash_int(value: &Value) -> Result<Value> {
-    let mut hasher = DefaultHasher::new();
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
     hash_value(&mut hasher, value);
     Ok(hasher.finish().into())
   }
@@ -754,6 +760,7 @@ static_function! {
 
 // Time
 
+#[cfg(feature = "std")]
 static_function! {
   pub fn now() -> Result<Value> {
     let now = SystemTime::now()

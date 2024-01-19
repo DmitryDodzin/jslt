@@ -1,4 +1,6 @@
-use std::sync::Arc;
+extern crate alloc;
+
+use alloc::{string::ToString, sync::Arc};
 
 use jslt::Jslt;
 use neon::prelude::*;

@@ -12,10 +12,10 @@ exclude = [
 ]
 
 [dependencies]
-pest = "2.7"
-pest_derive = "2.7"
+pest = { version = "2.7", default-features = false }
+pest_derive = { version = "2.7", default-features = false }
 rand = "0.8"
-regex = "1"
+regex-lite = "0.1"
 rstest = "0.18"
 serde = "1"
 serde_json = "1"
@@ -23,6 +23,13 @@ sha256 = "1"
 thiserror = "1"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
+
+[features]
+default = ["std"]
+std = []
+
+[lib]
+crate-type = ["dylib"]
 
 [workspace]
 members = [
@@ -35,5 +42,6 @@ repository = "https://github.com/DmitryDodzin/jslt.git"
 license = "MIT"
 
 [profile.release]
-lto = true
 opt-level = 'z'
+lto = true
+codegen-units = 1

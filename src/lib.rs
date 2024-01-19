@@ -1,8 +1,12 @@
 #![feature(iter_intersperse)]
 #![cfg_attr(test, feature(lazy_cell))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use std::{borrow::Cow, str::FromStr};
+extern crate alloc;
+
+use alloc::{borrow::Cow, boxed::Box};
+use core::str::FromStr;
 
 use pest::Parser;
 use serde::{Deserialize, Serialize};
@@ -61,7 +65,8 @@ impl FromStr for Jslt {
 
 #[cfg(test)]
 mod tests {
-  use std::{ops::Deref, sync::LazyLock};
+  extern crate std;
+  use std::{ops::Deref, sync::LazyLock, *};
 
   use rstest::rstest;
   use serde_json::json;
@@ -900,6 +905,7 @@ mod tests {
   }
 
   #[test]
+  #[cfg(feature = "std")]
   fn function_now() -> Result<()> {
     let jslt: Jslt = "now()".parse()?;
 

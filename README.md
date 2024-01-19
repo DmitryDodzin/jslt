@@ -80,6 +80,6 @@ Based on [Quick reference](https://github.com/schibsted/jslt#quick-references)
 ### Current Goals:
 
 - [x] Create context for function registration and scopes for variables
-- [ ] Enable `#![no_std]` sooner than later for possible nodejs support *
+- [x] Enable `#![no_std]` sooner than later for possible nodejs support *
 
 \* with `std` cargo flag for regular use.

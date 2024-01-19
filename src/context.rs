@@ -1,4 +1,11 @@
-use std::{borrow::Cow, collections::HashMap, fmt, sync::Arc};
+use alloc::{
+  borrow::{Cow, ToOwned},
+  collections::BTreeMap,
+  fmt,
+  string::String,
+  sync::Arc,
+  vec::Vec,
+};
 
 use serde_json::Value;
 
@@ -62,14 +69,14 @@ macro_rules! include_builtin {
 
 #[derive(Clone, Debug)]
 pub struct JsltContext {
-  pub functions: HashMap<String, JsltFunction>,
-  pub variables: HashMap<String, Value>,
+  pub functions: BTreeMap<String, JsltFunction>,
+  pub variables: BTreeMap<String, Value>,
 }
 
 impl Default for JsltContext {
   fn default() -> Self {
-    let mut functions = HashMap::default();
-    let variables = HashMap::default();
+    let mut functions = BTreeMap::default();
+    let variables = BTreeMap::default();
 
     include_builtin!(functions, contains);
     include_builtin!(functions, size);
@@ -87,6 +94,7 @@ impl Default for JsltContext {
     include_builtin!(functions, random);
     include_builtin!(functions, sum);
     include_builtin!(functions, r#mod, "mod");
+    #[cfg(feature = "std")]
     include_builtin!(functions, hash_int, "hash-int");
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
@@ -117,6 +125,7 @@ impl Default for JsltContext {
     include_builtin!(functions, zip);
     // include_builtin!(functions, zip_with_index, "zip-with-index");
     include_builtin!(functions, index_of, "index-of");
+    #[cfg(feature = "std")]
     include_builtin!(functions, now);
     // include_builtin!(functions, parse_time, "parse-time");
     // include_builtin!(functions, format_time, "format-time");

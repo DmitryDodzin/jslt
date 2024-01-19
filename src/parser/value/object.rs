@@ -1,4 +1,9 @@
-use std::{borrow::Cow, ops::Deref};
+use alloc::{
+  borrow::{Cow, ToOwned},
+  boxed::Box,
+  vec::Vec,
+};
+use core::ops::Deref;
 
 use pest::iterators::Pairs;
 use serde_json::Value;
