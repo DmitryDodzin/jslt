@@ -28,9 +28,6 @@ uuid = { version = "1", features = ["v4"] }
 default = ["std"]
 std = []
 
-[lib]
-crate-type = ["dylib"]
-
 [workspace]
 members = [
 	"node"
