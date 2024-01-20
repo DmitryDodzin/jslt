@@ -68,6 +68,7 @@ pub enum OperatorParser {
   Lt,
   Lte,
   Equal,
+  NotEqual,
 }
 
 #[derive(Debug)]
@@ -124,6 +125,7 @@ impl OperatorExprParser {
     impl_operator_parse!(pairs, Lt);
     impl_operator_parse!(pairs, Lte);
     impl_operator_parse!(pairs, Equal);
+    impl_operator_parse!(pairs, NotEqual);
     impl_operator_parse!(pairs, Add);
     impl_operator_parse!(pairs, Sub);
     impl_operator_parse!(pairs, Mul);
@@ -323,6 +325,7 @@ impl Transform for OperatorExprParser {
         ))),
       },
       OperatorParser::Equal => Ok(Value::Bool(left == right)),
+      OperatorParser::NotEqual => Ok(Value::Bool(left != right)),
     }
   }
 }

@@ -9,9 +9,8 @@ const runtimeLibc = () =>
 try {
   require(`jslt-node-${process.platform}${runtimeLibc()}-${process.arch}/jslt.node`);
 } catch (e) {
-  if (e.code !== 'MODULE_NOT_FOUND') {
-    console.error(e);
-    process.exit(1);
+  if (e.code != 'MODULE_NOT_FOUND') {
+    throw e;
   }
 
   const fs = require("fs");

@@ -5,7 +5,7 @@ Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | Functi
 Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement |  Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
-Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal }
+Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
 
 Add = { "+" }
 Sub = { "-" }
@@ -16,6 +16,7 @@ Lt = { "<" }
 Gte = { ">=" }
 Lte = { "<=" }
 Equal = { "==" }
+NotEqual = { "!=" }
 And = { "and" }
 Or = { "or" }
 If = _{ "if" }
