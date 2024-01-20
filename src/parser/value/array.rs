@@ -109,18 +109,4 @@ pub enum ArrayParserInner {
   For(ArrayFor),
 }
 
-#[derive(Debug)]
-pub struct PairParser(ExprParser, ExprParser);
-
-impl FromPairs for PairParser {
-  fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let mut inner = expect_inner!(pairs, Rule::Pair)?;
-
-    let key = ExprParser::from_pairs(&mut inner)?;
-    let value = ExprParser::from_pairs(&mut inner)?;
-
-    Ok(PairParser(key, value))
-  }
-}
-
 pub type ArrayFor = ForParser<ExprParser>;
