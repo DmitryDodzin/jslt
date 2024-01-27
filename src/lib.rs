@@ -9,27 +9,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  context::{Context, JsltContext},
+  context::JsltContext,
   error::{JsltError, Result},
-  parser::*,
+  parser::{FromPairs, JsltGrammar, Rule},
+  transform::{expr::ExprTransformer, Transform},
 };
 
 pub mod context;
 pub mod error;
 mod macros;
 pub mod parser;
+pub mod transform;
 
-pub trait Transform {
-  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value>;
-}
-
+/// Transformation
 #[derive(Debug)]
 pub struct Jslt {
-  builder: ExprParser,
+  builder: ExprTransformer,
   context: JsltContext,
 }
 
 impl Jslt {
+  /// Apply the jslt transformation
   pub fn transform<S, T>(&self, input: &T) -> Result<S>
   where
     S: for<'de> Deserialize<'de>,
@@ -52,7 +52,7 @@ impl FromStr for Jslt {
 
   fn from_str(value: &str) -> Result<Self> {
     let mut pairs = JsltGrammar::parse(Rule::Jslt, value).map_err(Box::new)?;
-    let builder = ExprParser::from_pairs(&mut pairs)?;
+    let builder = ExprTransformer::from_pairs(&mut pairs)?;
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })

@@ -7,34 +7,34 @@ use crate::{
   context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
   expect_inner,
-  parser::{value::ValueParser, FromPairs, Rule},
-  Transform,
+  parser::{FromPairs, Rule},
+  transform::{value::ValueTransformer, Transform},
 };
 
 #[derive(Debug)]
-pub enum ExprParser {
-  Value(ValueParser),
-  IfStatement(IfStatementParser),
-  OperatorExpr(OperatorExprParser),
-  FunctionDef(FunctionDefParser),
-  FunctionCall(FunctionCallParser),
-  VariableDef(VariableDefParser),
+pub enum ExprTransformer {
+  Value(ValueTransformer),
+  IfStatement(IfStatementTransformer),
+  OperatorExpr(OperatorExprTransformer),
+  FunctionDef(FunctionDefTransformer),
+  FunctionCall(FunctionCallTransformer),
+  VariableDef(VariableDefTransformer),
 }
 
-impl Transform for ExprParser {
+impl Transform for ExprTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     match self {
-      ExprParser::Value(value) => value.transform_value(context, input),
-      ExprParser::IfStatement(ifstmt) => ifstmt.transform_value(context, input),
-      ExprParser::FunctionCall(fcall) => fcall.transform_value(context, input),
-      ExprParser::FunctionDef(fdef) => fdef.transform_value(context, input),
-      ExprParser::OperatorExpr(oper_expr) => oper_expr.transform_value(context, input),
-      ExprParser::VariableDef(variable_def) => variable_def.transform_value(context, input),
+      ExprTransformer::Value(value) => value.transform_value(context, input),
+      ExprTransformer::IfStatement(ifstmt) => ifstmt.transform_value(context, input),
+      ExprTransformer::FunctionCall(fcall) => fcall.transform_value(context, input),
+      ExprTransformer::FunctionDef(fdef) => fdef.transform_value(context, input),
+      ExprTransformer::OperatorExpr(oper_expr) => oper_expr.transform_value(context, input),
+      ExprTransformer::VariableDef(variable_def) => variable_def.transform_value(context, input),
     }
   }
 }
 
-impl FromPairs for ExprParser {
+impl FromPairs for ExprTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     while let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
@@ -42,12 +42,22 @@ impl FromPairs for ExprParser {
           let _ = pairs.next();
           continue;
         }
-        Rule::IfStatement => IfStatementParser::from_pairs(pairs).map(ExprParser::IfStatement),
-        Rule::FunctionCall => FunctionCallParser::from_pairs(pairs).map(ExprParser::FunctionCall),
-        Rule::FunctionDef => FunctionDefParser::from_pairs(pairs).map(ExprParser::FunctionDef),
-        Rule::OperatorExpr => OperatorExprParser::from_pairs(pairs).map(ExprParser::OperatorExpr),
-        Rule::VariableDef => VariableDefParser::from_pairs(pairs).map(ExprParser::VariableDef),
-        _ => ValueParser::from_pairs(pairs).map(ExprParser::Value),
+        Rule::IfStatement => {
+          IfStatementTransformer::from_pairs(pairs).map(ExprTransformer::IfStatement)
+        }
+        Rule::FunctionCall => {
+          FunctionCallTransformer::from_pairs(pairs).map(ExprTransformer::FunctionCall)
+        }
+        Rule::FunctionDef => {
+          FunctionDefTransformer::from_pairs(pairs).map(ExprTransformer::FunctionDef)
+        }
+        Rule::OperatorExpr => {
+          OperatorExprTransformer::from_pairs(pairs).map(ExprTransformer::OperatorExpr)
+        }
+        Rule::VariableDef => {
+          VariableDefTransformer::from_pairs(pairs).map(ExprTransformer::VariableDef)
+        }
+        _ => ValueTransformer::from_pairs(pairs).map(ExprTransformer::Value),
       };
     }
 
@@ -56,7 +66,7 @@ impl FromPairs for ExprParser {
 }
 
 #[derive(Debug)]
-pub enum OperatorParser {
+pub enum OperatorTransformer {
   Add,
   Sub,
   Div,
@@ -72,10 +82,10 @@ pub enum OperatorParser {
 }
 
 #[derive(Debug)]
-pub struct OperatorExprParser {
-  lhs: Box<ExprParser>,
-  operator: OperatorParser,
-  rhs: Box<ExprParser>,
+pub struct OperatorExprTransformer {
+  lhs: Box<ExprTransformer>,
+  operator: OperatorTransformer,
+  rhs: Box<ExprTransformer>,
 }
 
 macro_rules! impl_operator_parse {
@@ -88,35 +98,35 @@ macro_rules! impl_operator_parse {
       let mut right = $ident.split_off(index).split_off(1);
 
       let lhs = if $ident.len() == 1 {
-        Box::new(ExprParser::from_pairs(&mut Pairs::single(
+        Box::new(ExprTransformer::from_pairs(&mut Pairs::single(
           $ident.pop().expect("Should have at least one value"),
         ))?)
       } else {
-        Box::new(ExprParser::OperatorExpr(
-          OperatorExprParser::from_inner_vec($ident)?,
+        Box::new(ExprTransformer::OperatorExpr(
+          OperatorExprTransformer::from_inner_vec($ident)?,
         ))
       };
 
       let rhs = if right.len() == 1 {
-        Box::new(ExprParser::from_pairs(&mut Pairs::single(
+        Box::new(ExprTransformer::from_pairs(&mut Pairs::single(
           right.pop().expect("Should have at least one value"),
         ))?)
       } else {
-        Box::new(ExprParser::OperatorExpr(
-          OperatorExprParser::from_inner_vec(right)?,
+        Box::new(ExprTransformer::OperatorExpr(
+          OperatorExprTransformer::from_inner_vec(right)?,
         ))
       };
 
-      return Ok(OperatorExprParser {
+      return Ok(OperatorExprTransformer {
         lhs,
         rhs,
-        operator: OperatorParser::$op,
+        operator: OperatorTransformer::$op,
       });
     }
   };
 }
 
-impl OperatorExprParser {
+impl OperatorExprTransformer {
   pub fn from_inner_vec(mut pairs: Vec<Pair<Rule>>) -> Result<Self> {
     impl_operator_parse!(pairs, And);
     impl_operator_parse!(pairs, Or);
@@ -137,7 +147,7 @@ impl OperatorExprParser {
   }
 }
 
-impl FromPairs for OperatorExprParser {
+impl FromPairs for OperatorExprTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::OperatorExpr)?;
 
@@ -145,7 +155,7 @@ impl FromPairs for OperatorExprParser {
   }
 }
 
-impl Transform for OperatorExprParser {
+impl Transform for OperatorExprTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let left = self
       .lhs
@@ -153,7 +163,7 @@ impl Transform for OperatorExprParser {
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
-      OperatorParser::Add => match (&left, &right) {
+      OperatorTransformer::Add => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64")).into(),
@@ -179,7 +189,7 @@ impl Transform for OperatorExprParser {
           "Add (\"+\") operator must be 2 numbers or strings (got \"{left} + {right}\")"
         ))),
       },
-      OperatorParser::Sub => match (&left, &right) {
+      OperatorTransformer::Sub => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64")).into(),
@@ -197,7 +207,7 @@ impl Transform for OperatorExprParser {
           "Sub (\"-\") operator must be 2 numbers (got \"{left} - {right}\")"
         ))),
       },
-      OperatorParser::Mul => match (&left, &right) {
+      OperatorTransformer::Mul => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64")).into(),
@@ -215,7 +225,7 @@ impl Transform for OperatorExprParser {
           "Mul (\"*\") operator must be 2 numbers (got \"{left} * {right}\")"
         ))),
       },
-      OperatorParser::Div => match (&left, &right) {
+      OperatorTransformer::Div => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64")).into(),
@@ -233,14 +243,14 @@ impl Transform for OperatorExprParser {
           "Div (\"/\") operator must be 2 numbers (got \"{left} / {right}\")"
         ))),
       },
-      OperatorParser::And => match (&left, &right) {
+      OperatorTransformer::And => match (&left, &right) {
         (Value::Bool(true), Value::Bool(true)) => Ok(Value::Bool(true)),
         (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
         _ => Err(JsltError::InvalidInput(format!(
           "And (\"and\") operator must be 2 booleans (got \"{left} and {right}\")"
         ))),
       },
-      OperatorParser::Or => match (&left, &right) {
+      OperatorTransformer::Or => match (&left, &right) {
         (Value::Bool(_) | Value::Null, Value::Bool(true))
         | (Value::Bool(true), Value::Bool(_) | Value::Null) => Ok(Value::Bool(true)),
         (Value::Bool(_) | Value::Null, Value::Bool(_) | Value::Null) => Ok(Value::Bool(false)),
@@ -248,7 +258,7 @@ impl Transform for OperatorExprParser {
           "Or (\"/\") operator must be 2 booleans (got \"{left} or {right}\")"
         ))),
       },
-      OperatorParser::Gt => match (&left, &right) {
+      OperatorTransformer::Gt => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Bool(
             left.as_u64().expect("Should be u64") > right.as_u64().expect("Should be u64"),
@@ -267,7 +277,7 @@ impl Transform for OperatorExprParser {
           "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
         ))),
       },
-      OperatorParser::Gte => match (&left, &right) {
+      OperatorTransformer::Gte => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Bool(
             left.as_u64().expect("Should be u64") >= right.as_u64().expect("Should be u64"),
@@ -286,7 +296,7 @@ impl Transform for OperatorExprParser {
           "GreaterThan (\">\") operator must be 2 numbers or strings (got \"{left} > {right}\")"
         ))),
       },
-      OperatorParser::Lt => match (&left, &right) {
+      OperatorTransformer::Lt => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Bool(
             left.as_u64().expect("Should be u64") < right.as_u64().expect("Should be u64"),
@@ -305,7 +315,7 @@ impl Transform for OperatorExprParser {
           "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
         ))),
       },
-      OperatorParser::Lte => match (&left, &right) {
+      OperatorTransformer::Lte => match (&left, &right) {
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Bool(
             left.as_u64().expect("Should be u64") <= right.as_u64().expect("Should be u64"),
@@ -324,38 +334,38 @@ impl Transform for OperatorExprParser {
           "LessThanEquals (\"<=\") operator must be 2 numbers or strings (got \"{left} < {right}\")"
         ))),
       },
-      OperatorParser::Equal => Ok(Value::Bool(left == right)),
-      OperatorParser::NotEqual => Ok(Value::Bool(left != right)),
+      OperatorTransformer::Equal => Ok(Value::Bool(left == right)),
+      OperatorTransformer::NotEqual => Ok(Value::Bool(left != right)),
     }
   }
 }
 
 #[derive(Debug)]
-pub struct ForParser<B> {
-  pub(super) source: Box<ExprParser>,
+pub struct ForTransformer<B> {
+  pub(super) source: Box<ExprTransformer>,
 
-  pub(super) condition: Option<ExprParser>,
+  pub(super) condition: Option<ExprTransformer>,
 
   pub(super) output: Box<B>,
 }
 
-impl<B> FromPairs for ForParser<B>
+impl<B> FromPairs for ForTransformer<B>
 where
   B: FromPairs,
 {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let source = ExprParser::from_pairs(pairs)?;
+    let source = ExprTransformer::from_pairs(pairs)?;
 
     let output = B::from_pairs(pairs)?;
 
     let condition = match pairs.peek() {
       Some(pair) if matches!(pair.as_rule(), Rule::IfCondition) => {
-        Some(ExprParser::from_pairs(&mut pair.into_inner())?)
+        Some(ExprTransformer::from_pairs(&mut pair.into_inner())?)
       }
       _ => None,
     };
 
-    Ok(ForParser {
+    Ok(ForTransformer {
       source: Box::new(source),
       condition,
       output: Box::new(output),
@@ -364,27 +374,27 @@ where
 }
 
 #[derive(Debug)]
-pub struct IfStatementParser {
-  condition: Box<ExprParser>,
-  value: Box<ExprParser>,
-  fallback: Option<Box<ExprParser>>,
+pub struct IfStatementTransformer {
+  condition: Box<ExprTransformer>,
+  value: Box<ExprTransformer>,
+  fallback: Option<Box<ExprTransformer>>,
 }
 
-impl FromPairs for IfStatementParser {
+impl FromPairs for IfStatementTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::IfStatement)?;
 
     let mut condition_paris = expect_inner!(pairs, Rule::IfCondition)?;
 
-    let condition = ExprParser::from_pairs(&mut condition_paris).map(Box::new)?;
+    let condition = ExprTransformer::from_pairs(&mut condition_paris).map(Box::new)?;
 
-    let value = ExprParser::from_pairs(&mut pairs).map(Box::new)?;
+    let value = ExprTransformer::from_pairs(&mut pairs).map(Box::new)?;
 
     let fallback = (pairs.len() != 0)
-      .then(|| ExprParser::from_pairs(&mut pairs).map(Box::new))
+      .then(|| ExprTransformer::from_pairs(&mut pairs).map(Box::new))
       .transpose()?;
 
-    Ok(IfStatementParser {
+    Ok(IfStatementTransformer {
       condition,
       value,
       fallback,
@@ -392,7 +402,7 @@ impl FromPairs for IfStatementParser {
   }
 }
 
-impl Transform for IfStatementParser {
+impl Transform for IfStatementTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     if builtins::boolean_cast(
       &self
@@ -411,12 +421,12 @@ impl Transform for IfStatementParser {
 }
 
 #[derive(Debug)]
-pub struct FunctionCallParser {
+pub struct FunctionCallTransformer {
   name: String,
-  arguments: Vec<ExprParser>,
+  arguments: Vec<ExprTransformer>,
 }
 
-impl FromPairs for FunctionCallParser {
+impl FromPairs for FunctionCallTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::FunctionCall)?;
 
@@ -427,14 +437,14 @@ impl FromPairs for FunctionCallParser {
       .to_owned();
 
     let arguments = pairs
-      .map(|pair| ExprParser::from_pairs(&mut Pairs::single(pair)))
+      .map(|pair| ExprTransformer::from_pairs(&mut Pairs::single(pair)))
       .collect::<Result<_>>()?;
 
-    Ok(FunctionCallParser { name, arguments })
+    Ok(FunctionCallTransformer { name, arguments })
   }
 }
 
-impl Transform for FunctionCallParser {
+impl Transform for FunctionCallTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let function = context
       .functions
@@ -454,14 +464,14 @@ impl Transform for FunctionCallParser {
 }
 
 #[derive(Debug)]
-pub struct FunctionDefParser {
+pub struct FunctionDefTransformer {
   name: String,
   arguments: Vec<String>,
-  expr: Arc<ExprParser>,
-  next: Box<ExprParser>,
+  expr: Arc<ExprTransformer>,
+  next: Box<ExprTransformer>,
 }
 
-impl FromPairs for FunctionDefParser {
+impl FromPairs for FunctionDefTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::FunctionDef)?;
 
@@ -481,11 +491,11 @@ impl FromPairs for FunctionDefParser {
       arguments.push(pairs.next().expect("was peeked").as_str().to_owned());
     }
 
-    let expr = ExprParser::from_pairs(&mut pairs).map(Arc::new)?;
+    let expr = ExprTransformer::from_pairs(&mut pairs).map(Arc::new)?;
 
-    let next = ExprParser::from_pairs(&mut pairs).map(Box::new)?;
+    let next = ExprTransformer::from_pairs(&mut pairs).map(Box::new)?;
 
-    Ok(FunctionDefParser {
+    Ok(FunctionDefTransformer {
       name,
       arguments,
       expr,
@@ -494,7 +504,7 @@ impl FromPairs for FunctionDefParser {
   }
 }
 
-impl Transform for FunctionDefParser {
+impl Transform for FunctionDefTransformer {
   fn transform_value(&self, mut context: Context<'_>, input: &Value) -> Result<Value> {
     let function = DynamicFunction {
       name: self.name.clone(),
@@ -512,13 +522,13 @@ impl Transform for FunctionDefParser {
 }
 
 #[derive(Debug)]
-pub struct VariableDefParser {
+pub struct VariableDefTransformer {
   name: String,
-  value: Box<ExprParser>,
-  next: Box<ExprParser>,
+  value: Box<ExprTransformer>,
+  next: Box<ExprTransformer>,
 }
 
-impl FromPairs for VariableDefParser {
+impl FromPairs for VariableDefTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::VariableDef)?;
 
@@ -528,14 +538,14 @@ impl FromPairs for VariableDefParser {
       .as_str()
       .to_owned();
 
-    let value = ExprParser::from_pairs(&mut pairs).map(Box::new)?;
-    let next = ExprParser::from_pairs(&mut pairs).map(Box::new)?;
+    let value = ExprTransformer::from_pairs(&mut pairs).map(Box::new)?;
+    let next = ExprTransformer::from_pairs(&mut pairs).map(Box::new)?;
 
-    Ok(VariableDefParser { name, value, next })
+    Ok(VariableDefTransformer { name, value, next })
   }
 }
 
-impl Transform for VariableDefParser {
+impl Transform for VariableDefTransformer {
   fn transform_value(&self, mut context: Context<'_>, input: &Value) -> Result<Value> {
     let name = self.name.clone();
     let value = self

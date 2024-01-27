@@ -6,17 +6,17 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{FromPairs, Rule},
-  Transform,
+  transform::Transform,
 };
 
 #[derive(Debug)]
-pub struct AccessorParser {
+pub struct AccessorTransformer {
   ident: String,
-  keys: Vec<KeyAccessorParser>,
-  nested: Option<Box<AccessorParser>>,
+  keys: Vec<KeyAccessorTransformer>,
+  nested: Option<Box<AccessorTransformer>>,
 }
 
-impl FromPairs for AccessorParser {
+impl FromPairs for AccessorTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Accessor)?;
 
@@ -35,7 +35,7 @@ impl FromPairs for AccessorParser {
 
           match inner.as_rule() {
             Rule::Number | Rule::String => {
-              keys.push(KeyAccessorParser::Index(inner.as_str().parse()?));
+              keys.push(KeyAccessorTransformer::Index(inner.as_str().parse()?));
             }
             Rule::RangeAccessor => {
               let mut inner = inner.into_inner();
@@ -52,15 +52,15 @@ impl FromPairs for AccessorParser {
                 .as_str()
                 .parse()?;
 
-              keys.push(KeyAccessorParser::Range { from, to });
+              keys.push(KeyAccessorTransformer::Range { from, to });
             }
             _ => return Err(JsltError::UnexpectedContent(Rule::KeyAccessor)),
           }
         }
         Rule::Accessor => {
-          nested = Some(Box::new(AccessorParser::from_pairs(&mut Pairs::single(
-            pair,
-          ))?));
+          nested = Some(Box::new(AccessorTransformer::from_pairs(
+            &mut Pairs::single(pair),
+          )?));
         }
         _ => break,
       }
@@ -68,7 +68,7 @@ impl FromPairs for AccessorParser {
 
     let ident = ident.unwrap_or("").to_owned();
 
-    Ok(AccessorParser {
+    Ok(AccessorTransformer {
       ident,
       keys,
       nested,
@@ -76,7 +76,7 @@ impl FromPairs for AccessorParser {
   }
 }
 
-impl Transform for AccessorParser {
+impl Transform for AccessorTransformer {
   #[allow(clippy::only_used_in_recursion)]
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut value = (!self.ident.is_empty())
@@ -87,12 +87,12 @@ impl Transform for AccessorParser {
 
     for key in &self.keys {
       let next_value = match key {
-        KeyAccessorParser::Index(Value::String(str_key)) => &value[str_key],
-        KeyAccessorParser::Index(Value::Number(num_key)) => num_key
+        KeyAccessorTransformer::Index(Value::String(str_key)) => &value[str_key],
+        KeyAccessorTransformer::Index(Value::Number(num_key)) => num_key
           .as_u64()
           .map(|index| &value[index as usize])
           .ok_or(JsltError::IndexOutOfRange)?,
-        KeyAccessorParser::Range { from, to } => {
+        KeyAccessorTransformer::Range { from, to } => {
           let from = from
             .as_u64()
             .ok_or(JsltError::RangeNotNumber(from.clone()))?;
@@ -121,7 +121,7 @@ impl Transform for AccessorParser {
 }
 
 #[derive(Debug)]
-pub enum KeyAccessorParser {
+pub enum KeyAccessorTransformer {
   Index(Value),
   Range { from: Value, to: Value },
 }

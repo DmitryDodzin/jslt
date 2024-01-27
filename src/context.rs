@@ -2,7 +2,10 @@ use std::{borrow::Cow, collections::HashMap, fmt, sync::Arc};
 
 use serde_json::Value;
 
-use crate::{error::Result, parser::ExprParser, Transform};
+use crate::{
+  error::Result,
+  transform::{expr::ExprTransformer, Transform},
+};
 
 pub(crate) mod builtins;
 
@@ -34,7 +37,7 @@ impl fmt::Debug for JsltFunction {
 pub struct DynamicFunction {
   pub name: String,
   pub arguments: Vec<String>,
-  pub expr: Arc<ExprParser>,
+  pub expr: Arc<ExprTransformer>,
 }
 
 impl DynamicFunction {

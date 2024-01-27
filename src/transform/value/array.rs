@@ -7,23 +7,23 @@ use crate::{
   context::{builtins, Context},
   error::{JsltError, Result},
   expect_inner,
-  parser::{
-    builder::{ExprParser, ForParser},
-    FromPairs, Rule,
+  parser::{FromPairs, Rule},
+  transform::{
+    expr::{ExprTransformer, ForTransformer},
+    Transform,
   },
-  Transform,
 };
 
 #[derive(Debug, Default)]
-pub struct ArrayParser {
-  inner: Vec<ArrayParserInner>,
+pub struct ArrayTransformer {
+  inner: Vec<ArrayTransformerInner>,
 }
 
-impl FromPairs for ArrayParser {
+impl FromPairs for ArrayTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::Array)?;
 
-    let mut builder = ArrayParser::default();
+    let mut builder = ArrayTransformer::default();
 
     while let Some(next) = pairs.peek() {
       match next.as_rule() {
@@ -33,7 +33,7 @@ impl FromPairs for ArrayParser {
         Rule::ArrayFor => {
           builder
             .inner
-            .push(ArrayParserInner::For(ArrayFor::from_pairs(
+            .push(ArrayTransformerInner::For(ArrayFor::from_pairs(
               &mut pairs
                 .next()
                 .expect("is not empty because of peek")
@@ -42,7 +42,9 @@ impl FromPairs for ArrayParser {
         }
         _ => builder
           .inner
-          .push(ArrayParserInner::Item(ExprParser::from_pairs(&mut pairs)?)),
+          .push(ArrayTransformerInner::Item(ExprTransformer::from_pairs(
+            &mut pairs,
+          )?)),
       }
     }
 
@@ -50,16 +52,16 @@ impl FromPairs for ArrayParser {
   }
 }
 
-impl Transform for ArrayParser {
+impl Transform for ArrayTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = Vec::new();
 
     for inner in &self.inner {
       match inner {
-        ArrayParserInner::Item(jslt) => {
+        ArrayTransformerInner::Item(jslt) => {
           items.push(jslt.transform_value(Context::Borrowed(&context), input)?)
         }
-        ArrayParserInner::For(ArrayFor {
+        ArrayTransformerInner::For(ArrayFor {
           source,
           condition,
           output,
@@ -104,9 +106,9 @@ impl Transform for ArrayParser {
 }
 
 #[derive(Debug)]
-pub enum ArrayParserInner {
-  Item(ExprParser),
+pub enum ArrayTransformerInner {
+  Item(ExprTransformer),
   For(ArrayFor),
 }
 
-pub type ArrayFor = ForParser<ExprParser>;
+pub type ArrayFor = ForTransformer<ExprTransformer>;
