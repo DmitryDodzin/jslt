@@ -6,7 +6,7 @@ use std::{
   time::SystemTime,
 };
 
-use regex::Regex;
+use regex_lite::Regex;
 use serde_json::{json, Value};
 use url::Url;
 use uuid::Uuid;

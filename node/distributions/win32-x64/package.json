@@ -1,0 +1,34 @@
+{
+  "name": "jslt-node-win32-x64",
+  "version": "0.0.1",
+  "description": "Jslt",
+  "scripts": {
+    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/win32-x64.node -- cargo build -p jslt-node --message-format=json-render-diagnostics  --release --target x86_64-pc-windows-msvc",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "cargo-cp-artifact": "^0.1"
+  },
+  "exports": {
+    "./jslt.node": "./lib/win32-x64.node",
+    "./package": "./package.json"
+  },
+  "engine": {
+    "node": ">=12.0.0"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DmitryDodzin/jslt.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/DmitryDodzin/jslt/issues"
+  },
+  "homepage": "https://github.com/DmitryDodzin/jslt#readme"
+}
