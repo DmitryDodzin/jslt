@@ -27,12 +27,14 @@ Let = _{ "let" }
 Scope = { "(" ~ Expr ~ ")" }
 
 Accessor = {
-    "." ~ Ident? ~ KeyAccessor* ~ Accessor?
+    (("." ~ Ident?) | KeyAccessor) ~ Accessor?
 }
 KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
-RangeAccessor = { Expr ~ ":" ~ Expr }
+FromRangeAccessor = { Expr ~ ":" ~ Expr? }
+ToRangeAccessor = { Expr? ~ ":" ~ Expr }
+RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
 
-FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
+FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" ~ Accessor? }
 
 FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 
@@ -67,7 +69,7 @@ IfCondition = {
     If ~ "(" ~ Expr ~ ")"
 }
 
-Variable = { "$" ~ Ident }
+Variable = { "$" ~ Ident ~ Accessor? }
 VariableDef = { Let ~ Ident ~ "=" ~ Expr ~ Expr? }
 
 String = ${ "\"" ~ Inner ~ "\"" }
@@ -88,6 +90,6 @@ Boolean = { "true" | "false" }
 
 Null = { "null" }
 
-COMMENT = { "//" ~ (!NEWLINE ~ ANY)* }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* }
 
 WHITESPACE = _{ " " | "\t" | NEWLINE }

@@ -27,9 +27,6 @@ impl FromPairs for ArrayTransformer {
 
     while let Some(next) = pairs.peek() {
       match next.as_rule() {
-        Rule::COMMENT => {
-          let _ = pairs.next();
-        }
         Rule::ArrayFor => {
           builder
             .inner

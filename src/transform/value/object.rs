@@ -41,7 +41,6 @@ impl FromPairs for ObjectTransformer {
 
     for pair in pairs {
       match pair.as_rule() {
-        Rule::COMMENT => continue,
         Rule::Pair => {
           builder
             .inner

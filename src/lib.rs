@@ -506,6 +506,26 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn function_capture() -> Result<()> {
+    let jslt: Jslt = "capture(.schema, \"http://(?<host>[^/]+)/(?<rest>.+)\")".parse()?;
+
+    let output = jslt.transform_value(
+      &json!({"schema" : "http://schemas.schibsted.io/thing/pulse-simple.json#1.json"}
+      ),
+    )?;
+
+    assert_eq!(
+      output,
+      json!({
+        "host" : "schemas.schibsted.io",
+        "rest" : "thing/pulse-simple.json#1.json"
+      })
+    );
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("1,2,3,4,5".into(), ",".into(), r#"["1", "2", "3", "4", "5"]"#)]
   #[case("1,2,3,4,5".into(), ";".into(), r#"["1,2,3,4,5"]"#)]

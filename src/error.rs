@@ -7,8 +7,8 @@ pub type Result<T, E = JsltError> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
 pub enum JsltError {
-  #[error("UnexpectedInput: {0:?} ({1})")]
-  UnexpectedInput(Rule, String),
+  #[error("UnexpectedInput: {0:?} but got {1:?} ({2})")]
+  UnexpectedInput(Rule, Rule, String),
   #[error("UnexpectedContent: for {0:?}")]
   UnexpectedContent(Rule),
   #[error("UnexpectedEnd")]

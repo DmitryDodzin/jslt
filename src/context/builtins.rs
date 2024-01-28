@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
 use std::{
   collections::hash_map::DefaultHasher,
@@ -389,15 +389,42 @@ static_function! {
         Ok(Value::Bool(re.is_match(value)))
       }
       _ => Err(JsltError::InvalidInput(
-        "Input of lowercase must be string".to_string(),
+        "Input of test must be string".to_string(),
       )),
     }
   }
 }
 
 static_function! {
-  pub fn capture(_input: &Value, _regex: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn capture(input: &Value, re: &Value) -> Result<Value> {
+    match (input, re) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::String(value), Value::String(re)) => {
+        let re: Regex = re
+          .replace("\\\\", "\\")
+          .parse()
+          .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing regex: {err}")))?;
+
+        let Some(captures) = re.captures(value) else {
+          return Ok(Value::Object(Default::default()));
+        };
+
+        Ok(Value::Object(
+          re.capture_names()
+            .filter_map(|name| {
+              name.and_then(|name| {
+                captures
+                  .name(name)
+                  .map(|m| (name.to_owned(), Value::String(m.as_str().to_owned())))
+              })
+            })
+            .collect(),
+        ))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of captrue must be string".to_string(),
+      )),
+    }
   }
 }
 

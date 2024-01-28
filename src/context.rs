@@ -94,7 +94,7 @@ impl Default for JsltContext {
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
     include_builtin!(functions, test);
-    // include_builtin!(functions, capture);
+    include_builtin!(functions, capture);
     include_builtin!(functions, split);
     include_builtin!(functions, join);
     include_builtin!(functions, lowercase);

@@ -36,12 +36,8 @@ impl Transform for ExprTransformer {
 
 impl FromPairs for ExprTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    while let Some(pair) = pairs.peek() {
+    if let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
-        Rule::COMMENT => {
-          let _ = pairs.next();
-          continue;
-        }
         Rule::IfStatement => {
           IfStatementTransformer::from_pairs(pairs).map(ExprTransformer::IfStatement)
         }
@@ -61,7 +57,7 @@ impl FromPairs for ExprTransformer {
       };
     }
 
-    Err(JsltError::UnexpectedInput(Rule::EOI, "EOI".to_owned()))
+    Err(JsltError::UnexpectedEnd)
   }
 }
 
@@ -164,6 +160,9 @@ impl Transform for OperatorExprTransformer {
 
     match self.operator {
       OperatorTransformer::Add => match (&left, &right) {
+        (Value::Array(left), Value::Array(right)) => Ok(Value::Array(
+          left.clone().into_iter().chain(right.clone()).collect(),
+        )),
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") + right.as_u64().expect("Should be u64")).into(),
@@ -186,7 +185,7 @@ impl Transform for OperatorExprTransformer {
             .collect(),
         )),
         _ => Err(JsltError::InvalidInput(format!(
-          "Add (\"+\") operator must be 2 numbers or strings (got \"{left} + {right}\")"
+          "Add (\"+\") operator invalid input (got \"{left} + {right}\")"
         ))),
       },
       OperatorTransformer::Sub => match (&left, &right) {

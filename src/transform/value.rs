@@ -22,10 +22,7 @@ pub struct BooleanTransformer(bool);
 
 impl FromPairs for BooleanTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
-      Rule::Boolean,
-      pairs.as_str().to_owned(),
-    ))?;
+    let pair = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
 
     let rule = pair.as_rule();
 
@@ -37,7 +34,11 @@ impl FromPairs for BooleanTransformer {
           .map_err(|_| JsltError::UnexpectedContent(Rule::Boolean))?,
       ))
     } else {
-      Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned()))
+      Err(JsltError::UnexpectedInput(
+        Rule::Boolean,
+        rule,
+        pair.as_str().to_owned(),
+      ))
     }
   }
 }
@@ -62,10 +63,7 @@ pub struct NumberTransformer(serde_json::Number);
 
 impl FromPairs for NumberTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let pair = pairs.next().ok_or(JsltError::UnexpectedInput(
-      Rule::Number,
-      pairs.as_str().to_owned(),
-    ))?;
+    let pair = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
 
     let rule = pair.as_rule();
 
@@ -77,7 +75,11 @@ impl FromPairs for NumberTransformer {
           .map_err(|_| JsltError::UnexpectedContent(Rule::Number))?,
       ))
     } else {
-      Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned()))
+      Err(JsltError::UnexpectedInput(
+        Rule::Number,
+        rule,
+        pair.as_str().to_owned(),
+      ))
     }
   }
 }
@@ -114,17 +116,18 @@ impl FromPairs for StringTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut pairs = expect_inner!(pairs, Rule::String)?;
 
-    let inner = pairs.next().ok_or(JsltError::UnexpectedInput(
-      Rule::String,
-      pairs.as_str().to_owned(),
-    ))?;
+    let inner = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
 
     let rule = inner.as_rule();
 
     if matches!(rule, Rule::Inner) {
       Ok(StringTransformer(inner.as_str().to_owned()))
     } else {
-      Err(JsltError::UnexpectedInput(rule, inner.as_str().to_owned()))
+      Err(JsltError::UnexpectedInput(
+        Rule::String,
+        rule,
+        inner.as_str().to_owned(),
+      ))
     }
   }
 }
@@ -150,39 +153,26 @@ pub enum ValueTransformer {
 
 impl FromPairs for ValueTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    for pair in pairs {
+    if let Some(pair) = pairs.peek() {
       return match pair.as_rule() {
-        Rule::Accessor => {
-          AccessorTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Accessor)
-        }
-        Rule::Array => {
-          ArrayTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Array)
-        }
-        Rule::Boolean => {
-          BooleanTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Boolean)
-        }
-        Rule::COMMENT => continue,
+        Rule::Accessor => AccessorTransformer::from_pairs(pairs).map(ValueTransformer::Accessor),
+        Rule::Array => ArrayTransformer::from_pairs(pairs).map(ValueTransformer::Array),
+        Rule::Boolean => BooleanTransformer::from_pairs(pairs).map(ValueTransformer::Boolean),
         Rule::Null => Ok(ValueTransformer::Null(NullTransformer)),
-        Rule::Number => {
-          NumberTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Number)
-        }
-        Rule::Object => {
-          ObjectTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Object)
-        }
-        Rule::Scope => {
-          ScopeTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Scope)
-        }
-        Rule::String => {
-          StringTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::String)
-        }
-        Rule::Variable => {
-          VariableTransformer::from_pairs(&mut Pairs::single(pair)).map(ValueTransformer::Variable)
-        }
-        rule => Err(JsltError::UnexpectedInput(rule, pair.as_str().to_owned())),
+        Rule::Number => NumberTransformer::from_pairs(pairs).map(ValueTransformer::Number),
+        Rule::Object => ObjectTransformer::from_pairs(pairs).map(ValueTransformer::Object),
+        Rule::Scope => ScopeTransformer::from_pairs(pairs).map(ValueTransformer::Scope),
+        Rule::String => StringTransformer::from_pairs(pairs).map(ValueTransformer::String),
+        Rule::Variable => VariableTransformer::from_pairs(pairs).map(ValueTransformer::Variable),
+        rule => Err(JsltError::UnexpectedInput(
+          Rule::Value,
+          rule,
+          pair.as_str().to_owned(),
+        )),
       };
     }
 
-    Err(JsltError::UnexpectedInput(Rule::EOI, "EOI".to_owned()))
+    Err(JsltError::UnexpectedEnd)
   }
 }
 
@@ -203,18 +193,31 @@ impl Transform for ValueTransformer {
 }
 
 #[derive(Debug)]
-pub struct VariableTransformer(String);
+pub struct VariableTransformer(String, Option<AccessorTransformer>);
 
 impl FromPairs for VariableTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
-    let pairs = expect_inner!(pairs, Rule::Variable)?;
+    let mut pairs = expect_inner!(pairs, Rule::Variable)?;
 
-    Ok(VariableTransformer(pairs.as_str().to_owned()))
+    let ident = pairs.next().ok_or(JsltError::UnexpectedEnd)?;
+
+    Ok(VariableTransformer(
+      ident.as_str().to_owned(),
+      pairs
+        .next()
+        .map(|pair| AccessorTransformer::from_pairs(&mut Pairs::single(pair)))
+        .transpose()?,
+    ))
   }
 }
 
 impl Transform for VariableTransformer {
   fn transform_value(&self, context: Context<'_>, _: &Value) -> Result<Value> {
-    Ok(context.variables[&self.0].clone())
+    let value = context.variables[&self.0].clone();
+
+    match &self.1 {
+      Some(accessor) => accessor.transform_value(context, &value),
+      None => Ok(value),
+    }
   }
 }
