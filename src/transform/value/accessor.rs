@@ -6,7 +6,7 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{FromPairs, Rule},
-  transform::{expr::ExprTransformer, value::VariableTransformer, Transform},
+  transform::{expr::ExprTransformer, Transform},
 };
 
 #[derive(Debug)]

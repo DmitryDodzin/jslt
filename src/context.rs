@@ -118,7 +118,7 @@ impl Default for JsltContext {
     include_builtin!(functions, all);
     include_builtin!(functions, any);
     include_builtin!(functions, zip);
-    // include_builtin!(functions, zip_with_index, "zip-with-index");
+    include_builtin!(functions, zip_with_index, "zip-with-index");
     include_builtin!(functions, index_of, "index-of");
     include_builtin!(functions, now);
     // include_builtin!(functions, parse_time, "parse-time");

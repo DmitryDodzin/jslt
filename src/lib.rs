@@ -873,6 +873,23 @@ mod tests {
   }
 
   #[rstest]
+  #[case("null", "null")]
+  #[case("[]", "[]")]
+  #[case(
+    "[1, 2, 3]",
+    r#"[{ "index": 0, "value": 1 }, { "index": 1, "value": 2 }, { "index": 2, "value": 3 }]"#
+  )]
+  fn function_zip_with_index(#[case] values: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "zip-with-index(.)".parse()?;
+
+    let output = jslt.transform_value(&values)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("[]", "1", "-1")]
   #[case("[0, 1, 2]", "1", "1")]
   #[case("[0, 1, 2, null]", "null", "3")]

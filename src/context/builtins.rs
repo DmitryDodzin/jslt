@@ -746,19 +746,36 @@ static_function! {
   pub fn zip(left: &Value, right: &Value) -> Result<Value> {
     match (left, right) {
       (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-      (Value::Array(left), Value::Array(right)) if left.len() >= right.len() => {
-        Ok(Value::Array(left.iter().cloned().zip(right.iter().cloned()).map(|(left, right)| Value::Array(vec![left, right])).collect()))
-      }
+      (Value::Array(left), Value::Array(right)) if left.len() >= right.len() => Ok(Value::Array(
+        left
+          .iter()
+          .cloned()
+          .zip(right.iter().cloned())
+          .map(|(left, right)| Value::Array(vec![left, right]))
+          .collect(),
+      )),
       _ => Err(JsltError::InvalidInput(
         "Input of zip must be two arrays (right must be at least as long as left)".to_string(),
-      ))
+      )),
     }
   }
 }
 
 static_function! {
-  pub fn zip_with_index(_values: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn zip_with_index(values: &Value) -> Result<Value> {
+    match values {
+      Value::Null => Ok(Value::Null),
+      Value::Array(values) => Ok(Value::Array(
+        values
+          .iter()
+          .enumerate()
+          .map(|(index, value)| json!({ "index": index, "value": value }))
+          .collect(),
+      )),
+      _ => Err(JsltError::InvalidInput(
+        "Input of zip-with-index must array".to_string(),
+      )),
+    }
   }
 }
 
