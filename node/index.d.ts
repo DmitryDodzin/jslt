@@ -1,6 +1,16 @@
 declare type NativeSchema = symbol;
 
 declare namespace Jslt {
+	export class Jslt {
+        constructor(schema: string);
+
+		transform<T = any, R = any>(value?: T): R;
+
+        transformStr(value: string): string;
+
+        transformParse<R = any>(value: string): R;
+	}
+
 	export function compile(schema: string): NativeSchema;
 
 	export function transform<T = any, R = any>(schema: string | NativeSchema, value?: T): R;
