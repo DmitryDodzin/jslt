@@ -909,6 +909,38 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case("1529677391", "%Y-%m-%dT%H:%M:%S", "\"2018-06-22T14:23:11\"")]
+  fn function_format_time(
+    #[case] time: Value,
+    #[case] format: &str,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "format-time(.time, .format)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "time": time, "format": format }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("\"2018-06-22T14:23:11\"", "%Y-%m-%dT%H:%M:%S", "1529677391.0")]
+  fn function_parse_time(
+    #[case] time: Value,
+    #[case] format: &str,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "parse-time(.time, .format)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "time": time, "format": format }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
   #[test]
   fn function_parse_url() -> Result<()> {
     let jslt: Jslt = "parse-url(\"https://www.example.com/?aa=1&aa=2&bb=&cc\")".parse()?;

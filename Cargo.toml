@@ -12,6 +12,7 @@ exclude = [
 ]
 
 [dependencies]
+chrono = "0.4"
 pest = "2.7"
 pest_derive = "2.7"
 rand = "0.8"
@@ -38,4 +39,4 @@ license = "MIT"
 codegen-units = 1
 lto = true
 opt-level = 'z'
-strip = 'debuginfo'
+strip = "debuginfo"

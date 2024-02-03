@@ -1,11 +1,10 @@
-// #![allow(dead_code)]
-
 use std::{
   collections::hash_map::DefaultHasher,
   hash::{Hash, Hasher},
-  time::SystemTime,
+  time::{Duration, SystemTime},
 };
 
+use chrono::NaiveDateTime;
 use regex_lite::Regex;
 use serde_json::{json, Value};
 use url::Url;
@@ -804,19 +803,44 @@ static_function! {
       .duration_since(SystemTime::UNIX_EPOCH)
       .expect("Should be valid");
 
-    Ok((now.as_secs_f64()).into())
+    Ok(now.as_secs_f64().into())
   }
 }
 
 static_function! {
-  pub fn parse_time(_time: &Value, _format: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    unimplemented!()
+  pub fn parse_time(timestamp: &Value, format: &Value, _fallback: Option<&Value>) -> Result<Value> {
+    match (timestamp, format) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::String(timestamp), Value::String(format)) => {
+        match NaiveDateTime::parse_from_str(timestamp, format) {
+          Ok(timestamp) => (timestamp - NaiveDateTime::UNIX_EPOCH)
+            .to_std()
+            .map(|timestamp| timestamp.as_secs_f64().into())
+            .map_err(|err| JsltError::InvalidInput(err.to_string())),
+          Err(err) => Err(JsltError::InvalidInput(err.to_string())),
+        }
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Bad arguments for format-time".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
-  pub fn format_time(_timestamp: &Value, _format: &Value, _timezone: Option<&Value>) -> Result<Value> {
-    unimplemented!()
+  pub fn format_time(timestamp: &Value, format: &Value, _timezone: Option<&Value>) -> Result<Value> {
+    match (timestamp, format) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::Number(timestamp), Value::String(format)) => {
+        let timestamp =
+          NaiveDateTime::UNIX_EPOCH + Duration::from_secs_f64(timestamp.as_f64().expect("Should work"));
+
+        Ok(Value::String(timestamp.format(format).to_string()))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Bad arguments for format-time".to_string(),
+      )),
+    }
   }
 }
 

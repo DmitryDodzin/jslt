@@ -2,7 +2,7 @@ Jslt = _{ SOI ~ Expr ~ EOI }
 
 Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope | Variable }
 
-Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement |  Value }
+Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement | Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
 Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
@@ -80,7 +80,7 @@ Char   =  {
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-Ident = @{ !(Def | For | If | Let) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+Ident = @{ !((Def | For | If | Let) ~ WHITESPACE) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
 
 Number = @{
     "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
