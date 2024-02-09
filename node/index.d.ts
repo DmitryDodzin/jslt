@@ -1,13 +1,23 @@
-declare type CompiledSchema = symbol;
+declare type NativeSchema = symbol;
 
 declare namespace Jslt {
-	export function compile(schema: string): CompiledSchema;
+  export class Jslt {
+    constructor(schema: string);
 
-	export function transform<T = any, R = any>(schema: string | CompiledSchema, value?: T): R;
+    transform<T = any, R = any>(value?: T): R;
 
-	export function transformStr(schema: string | CompiledSchema, value: string): string;
+    transformStr(value: string): string;
 
-	export function transformParse<R = any>(schema: string | CompiledSchema, value: string): R;
+    transformParse<R = any>(value: string): R;
+  }
+
+  export function compile(schema: string): NativeSchema;
+
+  export function transform<T = any, R = any>(schema: string | NativeSchema, value?: T): R;
+
+  export function transformStr(schema: string | NativeSchema, value: string): string;
+
+  export function transformParse<R = any>(schema: string | NativeSchema, value: string): R;
 }
 
 export = Jslt;

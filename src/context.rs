@@ -2,7 +2,10 @@ use std::{borrow::Cow, collections::HashMap, fmt, sync::Arc};
 
 use serde_json::Value;
 
-use crate::{error::Result, parser::ExprBuilder, Transform};
+use crate::{
+  error::Result,
+  transform::{expr::ExprTransformer, Transform},
+};
 
 pub(crate) mod builtins;
 
@@ -34,7 +37,7 @@ impl fmt::Debug for JsltFunction {
 pub struct DynamicFunction {
   pub name: String,
   pub arguments: Vec<String>,
-  pub expr: Arc<ExprBuilder>,
+  pub expr: Arc<ExprTransformer>,
 }
 
 impl DynamicFunction {
@@ -91,7 +94,7 @@ impl Default for JsltContext {
     include_builtin!(functions, is_string, "is-string");
     include_builtin!(functions, string);
     include_builtin!(functions, test);
-    // include_builtin!(functions, capture);
+    include_builtin!(functions, capture);
     include_builtin!(functions, split);
     include_builtin!(functions, join);
     include_builtin!(functions, lowercase);
@@ -115,11 +118,11 @@ impl Default for JsltContext {
     include_builtin!(functions, all);
     include_builtin!(functions, any);
     include_builtin!(functions, zip);
-    // include_builtin!(functions, zip_with_index, "zip-with-index");
+    include_builtin!(functions, zip_with_index, "zip-with-index");
     include_builtin!(functions, index_of, "index-of");
     include_builtin!(functions, now);
-    // include_builtin!(functions, parse_time, "parse-time");
-    // include_builtin!(functions, format_time, "format-time");
+    include_builtin!(functions, parse_time, "parse-time");
+    include_builtin!(functions, format_time, "format-time");
     include_builtin!(functions, parse_url, "parse-url");
 
     JsltContext {

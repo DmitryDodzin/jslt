@@ -1,7 +1,3 @@
-mod builder;
-pub mod value;
-
-pub use builder::*;
 use pest::iterators::Pairs;
 
 use crate::error::Result;
@@ -12,4 +8,4 @@ pub trait FromPairs: Sized {
 
 #[derive(pest_derive::Parser)]
 #[grammar = "./src/parser/jslt.pest"]
-pub struct JsltParser;
+pub struct JsltGrammar;

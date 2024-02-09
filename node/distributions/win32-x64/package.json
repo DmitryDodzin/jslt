@@ -1,27 +1,26 @@
 {
-  "name": "jslt-node-darwin-arm64",
+  "name": "jslt-node-win32-x64",
   "version": "0.0.1",
   "description": "Jslt",
   "scripts": {
-    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/darwin-arm64.node -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics  --release --target aarch64-apple-darwin",
+    "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/win32-x64.node -- cargo build -p jslt-node --message-format=json-render-diagnostics  --release --target x86_64-pc-windows-msvc",
     "prepack": "npm run build"
   },
   "devDependencies": {
     "cargo-cp-artifact": "^0.1"
   },
   "exports": {
-    "./jslt.node": "./lib/darwin-arm64.node",
+    "./jslt.node": "./lib/win32-x64.node",
     "./package": "./package.json"
   },
   "engine": {
-    "node": ">=12.0.0",
-    "glibc": ">=2.26"
+    "node": ">=12.0.0"
   },
   "os": [
-    "darwin"
+    "win32"
   ],
   "cpu": [
-    "arm64"
+    "x64"
   ],
   "repository": {
     "type": "git",

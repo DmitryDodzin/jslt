@@ -13,7 +13,8 @@
   "types": "index.d.ts",
   "scripts": {
     "build": "cargo-cp-artifact -nc ./bin/index.node -- cargo build -p jslt-node --message-format=json-render-diagnostics",
-    "install": "node ./check-bin.js || pnpm run build",
+    "build:distributions": "pnpm run --filter '!jslt-node-win32-x64' build",
+    "install": "node ./check-bin.js || npm run build",
     "test": "cargo test"
   },
   "dependencies": {
@@ -24,11 +25,12 @@
   },
   "optionalDependencies": {
     "jslt-node-darwin-arm64": "0.0.1",
-    "jslt-node-darwin-x86": "0.0.1",
+    "jslt-node-darwin-x64": "0.0.1",
     "jslt-node-linux-arm64": "0.0.1",
     "jslt-node-linux-x64": "0.0.1",
     "jslt-node-linuxmusl-arm64": "0.0.1",
-    "jslt-node-linuxmusl-x64": "0.0.1"
+    "jslt-node-linuxmusl-x64": "0.0.1",
+    "jslt-node-win32-x64": "0.0.1"
   },
   "engine": {
     "node": ">=12.0.0"

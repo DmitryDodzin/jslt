@@ -2,10 +2,10 @@ Jslt = _{ SOI ~ Expr ~ EOI }
 
 Value = _{ Array | Object | Number | String | Boolean | Null | Accessor | FunctionCall | Scope | Variable }
 
-Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement |  Value }
+Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement | Value }
 OperatorExpr = { Value ~ (Operator ~ Value)+ }
 
-Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal }
+Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
 
 Add = { "+" }
 Sub = { "-" }
@@ -16,6 +16,7 @@ Lt = { "<" }
 Gte = { ">=" }
 Lte = { "<=" }
 Equal = { "==" }
+NotEqual = { "!=" }
 And = { "and" }
 Or = { "or" }
 If = _{ "if" }
@@ -26,12 +27,14 @@ Let = _{ "let" }
 Scope = { "(" ~ Expr ~ ")" }
 
 Accessor = {
-    "." ~ Ident? ~ KeyAccessor* ~ Accessor?
+    (("." ~ Ident?) | KeyAccessor) ~ Accessor?
 }
 KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
-RangeAccessor = { Expr ~ ":" ~ Expr }
+FromRangeAccessor = { Expr ~ ":" ~ Expr? }
+ToRangeAccessor = { Expr? ~ ":" ~ Expr }
+RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
 
-FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
+FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" ~ Accessor? }
 
 FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 
@@ -66,7 +69,7 @@ IfCondition = {
     If ~ "(" ~ Expr ~ ")"
 }
 
-Variable = { "$" ~ Ident }
+Variable = { "$" ~ Ident ~ Accessor? }
 VariableDef = { Let ~ Ident ~ "=" ~ Expr ~ Expr? }
 
 String = ${ "\"" ~ Inner ~ "\"" }
@@ -77,7 +80,7 @@ Char   =  {
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-Ident = @{ !(Def | For | If | Let) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
+Ident = @{ !((Def | For | If | Let) ~ WHITESPACE) ~ ASCII_ALPHANUMERIC ~ ("_" | "-" | ASCII_ALPHANUMERIC)* }
 
 Number = @{
     "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
@@ -87,6 +90,6 @@ Boolean = { "true" | "false" }
 
 Null = { "null" }
 
-COMMENT = { "//" ~ (!NEWLINE ~ ANY)* }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* }
 
 WHITESPACE = _{ " " | "\t" | NEWLINE }

@@ -7,63 +7,60 @@ use crate::{
   context::{builtins::boolean_cast, Context},
   error::{JsltError, Result},
   expect_inner,
-  parser::{
-    builder::{ExprBuilder, ForBuilder},
-    FromPairs, Rule,
+  parser::{FromPairs, Rule},
+  transform::{
+    expr::{ExprTransformer, ForTransformer},
+    Transform,
   },
-  Transform,
 };
 
 #[derive(Debug)]
-pub struct PairBuilder(ExprBuilder, ExprBuilder);
+pub struct PairTransformer(ExprTransformer, ExprTransformer);
 
-impl FromPairs for PairBuilder {
+impl FromPairs for PairTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let mut inner = expect_inner!(pairs, Rule::Pair)?;
 
-    let key = ExprBuilder::from_pairs(&mut inner)?;
-    let value = ExprBuilder::from_pairs(&mut inner)?;
+    let key = ExprTransformer::from_pairs(&mut inner)?;
+    let value = ExprTransformer::from_pairs(&mut inner)?;
 
-    Ok(PairBuilder(key, value))
+    Ok(PairTransformer(key, value))
   }
 }
 
 #[derive(Debug, Default)]
-pub struct ObjectBuilder {
-  inner: Vec<ObjectBuilderInner>,
+pub struct ObjectTransformer {
+  inner: Vec<ObjectTransformerInner>,
 }
 
-impl FromPairs for ObjectBuilder {
+impl FromPairs for ObjectTransformer {
   fn from_pairs(pairs: &mut Pairs<Rule>) -> Result<Self> {
     let pairs = expect_inner!(pairs, Rule::Object)?;
 
-    let mut builder = ObjectBuilder::default();
+    let mut builder = ObjectTransformer::default();
 
     for pair in pairs {
       match pair.as_rule() {
-        Rule::COMMENT => continue,
         Rule::Pair => {
           builder
             .inner
-            .push(ObjectBuilderInner::Pair(PairBuilder::from_pairs(
+            .push(ObjectTransformerInner::Pair(PairTransformer::from_pairs(
               &mut Pairs::single(pair),
             )?));
         }
         Rule::ObjectFor => {
           let mut inner_pairs = pair.into_inner();
 
-          builder
-            .inner
-            .push(ObjectBuilderInner::For(ObjectForBuilder::from_pairs(
-              &mut inner_pairs,
-            )?));
+          builder.inner.push(ObjectTransformerInner::For(
+            ObjectForTransformer::from_pairs(&mut inner_pairs)?,
+          ));
         }
         Rule::ObjectSpread => {
           let mut pairs = pair.into_inner();
 
           builder
             .inner
-            .push(ObjectBuilderInner::Spread(ExprBuilder::from_pairs(
+            .push(ObjectTransformerInner::Spread(ExprTransformer::from_pairs(
               &mut pairs,
             )?))
         }
@@ -75,13 +72,13 @@ impl FromPairs for ObjectBuilder {
   }
 }
 
-impl Transform for ObjectBuilder {
+impl Transform for ObjectTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     let mut items = serde_json::Map::new();
 
     for inner in &self.inner {
       match inner {
-        ObjectBuilderInner::Pair(PairBuilder(key, value)) => {
+        ObjectTransformerInner::Pair(PairTransformer(key, value)) => {
           let key = key
             .transform_value(Context::Borrowed(&context), input)?
             .as_str()
@@ -93,12 +90,12 @@ impl Transform for ObjectBuilder {
             value.transform_value(Context::Borrowed(&context), input)?,
           );
         }
-        ObjectBuilderInner::For(ObjectForBuilder {
+        ObjectTransformerInner::For(ObjectForTransformer {
           source,
           output,
           condition,
         }) => {
-          let PairBuilder(key, value) = output.deref();
+          let PairTransformer(key, value) = output.deref();
           let source = source.transform_value(Context::Borrowed(&context), input)?;
 
           let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
@@ -138,7 +135,7 @@ impl Transform for ObjectBuilder {
             );
           }
         }
-        ObjectBuilderInner::Spread(expr) => {
+        ObjectTransformerInner::Spread(expr) => {
           let source = input.as_object().expect("Should be object");
 
           for key in source.keys() {
@@ -160,10 +157,10 @@ impl Transform for ObjectBuilder {
 }
 
 #[derive(Debug)]
-pub enum ObjectBuilderInner {
-  Pair(PairBuilder),
-  For(ObjectForBuilder),
-  Spread(ExprBuilder),
+pub enum ObjectTransformerInner {
+  Pair(PairTransformer),
+  For(ObjectForTransformer),
+  Spread(ExprTransformer),
 }
 
-pub type ObjectForBuilder = ForBuilder<PairBuilder>;
+pub type ObjectForTransformer = ForTransformer<PairTransformer>;

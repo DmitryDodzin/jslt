@@ -9,27 +9,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-  context::{Context, JsltContext},
+  context::JsltContext,
   error::{JsltError, Result},
-  parser::*,
+  parser::{FromPairs, JsltGrammar, Rule},
+  transform::{expr::ExprTransformer, Transform},
 };
 
 pub mod context;
 pub mod error;
 mod macros;
 pub mod parser;
+pub mod transform;
 
-pub trait Transform {
-  fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value>;
-}
-
+/// Transformation
 #[derive(Debug)]
 pub struct Jslt {
-  builder: ExprBuilder,
+  builder: ExprTransformer,
   context: JsltContext,
 }
 
 impl Jslt {
+  /// Apply the jslt transformation
   pub fn transform<S, T>(&self, input: &T) -> Result<S>
   where
     S: for<'de> Deserialize<'de>,
@@ -51,8 +51,8 @@ impl FromStr for Jslt {
   type Err = JsltError;
 
   fn from_str(value: &str) -> Result<Self> {
-    let mut pairs = JsltParser::parse(Rule::Jslt, value).map_err(Box::new)?;
-    let builder = ExprBuilder::from_pairs(&mut pairs)?;
+    let mut pairs = JsltGrammar::parse(Rule::Jslt, value).map_err(Box::new)?;
+    let builder = ExprTransformer::from_pairs(&mut pairs)?;
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })
@@ -506,6 +506,26 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn function_capture() -> Result<()> {
+    let jslt: Jslt = "capture(.schema, \"http://(?<host>[^/]+)/(?<rest>.+)\")".parse()?;
+
+    let output = jslt.transform_value(
+      &json!({"schema" : "http://schemas.schibsted.io/thing/pulse-simple.json#1.json"}
+      ),
+    )?;
+
+    assert_eq!(
+      output,
+      json!({
+        "host" : "schemas.schibsted.io",
+        "rest" : "thing/pulse-simple.json#1.json"
+      })
+    );
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("1,2,3,4,5".into(), ",".into(), r#"["1", "2", "3", "4", "5"]"#)]
   #[case("1,2,3,4,5".into(), ";".into(), r#"["1,2,3,4,5"]"#)]
@@ -853,6 +873,23 @@ mod tests {
   }
 
   #[rstest]
+  #[case("null", "null")]
+  #[case("[]", "[]")]
+  #[case(
+    "[1, 2, 3]",
+    r#"[{ "index": 0, "value": 1 }, { "index": 1, "value": 2 }, { "index": 2, "value": 3 }]"#
+  )]
+  fn function_zip_with_index(#[case] values: Value, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = "zip-with-index(.)".parse()?;
+
+    let output = jslt.transform_value(&values)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("[]", "1", "-1")]
   #[case("[0, 1, 2]", "1", "1")]
   #[case("[0, 1, 2, null]", "null", "3")]
@@ -866,6 +903,38 @@ mod tests {
     let jslt: Jslt = "index-of(.left, .right)".parse()?;
 
     let output = jslt.transform_value(&json!({ "left": left, "right": right }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("1529677391", "%Y-%m-%dT%H:%M:%S", "\"2018-06-22T14:23:11\"")]
+  fn function_format_time(
+    #[case] time: Value,
+    #[case] format: &str,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "format-time(.time, .format)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "time": time, "format": format }))?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("\"2018-06-22T14:23:11\"", "%Y-%m-%dT%H:%M:%S", "1529677391.0")]
+  fn function_parse_time(
+    #[case] time: Value,
+    #[case] format: &str,
+    #[case] expected: Value,
+  ) -> Result<()> {
+    let jslt: Jslt = "parse-time(.time, .format)".parse()?;
+
+    let output = jslt.transform_value(&json!({ "time": time, "format": format }))?;
 
     assert_eq!(output, expected);
 

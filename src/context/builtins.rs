@@ -1,12 +1,11 @@
-#![allow(dead_code)]
-
 use std::{
   collections::hash_map::DefaultHasher,
   hash::{Hash, Hasher},
-  time::SystemTime,
+  time::{Duration, SystemTime},
 };
 
-use regex::Regex;
+use chrono::NaiveDateTime;
+use regex_lite::Regex;
 use serde_json::{json, Value};
 use url::Url;
 use uuid::Uuid;
@@ -389,15 +388,42 @@ static_function! {
         Ok(Value::Bool(re.is_match(value)))
       }
       _ => Err(JsltError::InvalidInput(
-        "Input of lowercase must be string".to_string(),
+        "Input of test must be string".to_string(),
       )),
     }
   }
 }
 
 static_function! {
-  pub fn capture(_input: &Value, _regex: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn capture(input: &Value, re: &Value) -> Result<Value> {
+    match (input, re) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::String(value), Value::String(re)) => {
+        let re: Regex = re
+          .replace("\\\\", "\\")
+          .parse()
+          .map_err(|err| JsltError::Unknown(format!("Unexpected error when parsing regex: {err}")))?;
+
+        let Some(captures) = re.captures(value) else {
+          return Ok(Value::Object(Default::default()));
+        };
+
+        Ok(Value::Object(
+          re.capture_names()
+            .filter_map(|name| {
+              name.and_then(|name| {
+                captures
+                  .name(name)
+                  .map(|m| (name.to_owned(), Value::String(m.as_str().to_owned())))
+              })
+            })
+            .collect(),
+        ))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Input of captrue must be string".to_string(),
+      )),
+    }
   }
 }
 
@@ -719,19 +745,36 @@ static_function! {
   pub fn zip(left: &Value, right: &Value) -> Result<Value> {
     match (left, right) {
       (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-      (Value::Array(left), Value::Array(right)) if left.len() >= right.len() => {
-        Ok(Value::Array(left.iter().cloned().zip(right.iter().cloned()).map(|(left, right)| Value::Array(vec![left, right])).collect()))
-      }
+      (Value::Array(left), Value::Array(right)) if left.len() >= right.len() => Ok(Value::Array(
+        left
+          .iter()
+          .cloned()
+          .zip(right.iter().cloned())
+          .map(|(left, right)| Value::Array(vec![left, right]))
+          .collect(),
+      )),
       _ => Err(JsltError::InvalidInput(
         "Input of zip must be two arrays (right must be at least as long as left)".to_string(),
-      ))
+      )),
     }
   }
 }
 
 static_function! {
-  pub fn zip_with_index(_values: &Value) -> Result<Value> {
-    unimplemented!()
+  pub fn zip_with_index(values: &Value) -> Result<Value> {
+    match values {
+      Value::Null => Ok(Value::Null),
+      Value::Array(values) => Ok(Value::Array(
+        values
+          .iter()
+          .enumerate()
+          .map(|(index, value)| json!({ "index": index, "value": value }))
+          .collect(),
+      )),
+      _ => Err(JsltError::InvalidInput(
+        "Input of zip-with-index must array".to_string(),
+      )),
+    }
   }
 }
 
@@ -760,19 +803,44 @@ static_function! {
       .duration_since(SystemTime::UNIX_EPOCH)
       .expect("Should be valid");
 
-    Ok((now.as_secs_f64()).into())
+    Ok(now.as_secs_f64().into())
   }
 }
 
 static_function! {
-  pub fn parse_time(_time: &Value, _format: &Value, _fallback: Option<&Value>) -> Result<Value> {
-    unimplemented!()
+  pub fn parse_time(timestamp: &Value, format: &Value, _fallback: Option<&Value>) -> Result<Value> {
+    match (timestamp, format) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::String(timestamp), Value::String(format)) => {
+        match NaiveDateTime::parse_from_str(timestamp, format) {
+          Ok(timestamp) => (timestamp - NaiveDateTime::UNIX_EPOCH)
+            .to_std()
+            .map(|timestamp| timestamp.as_secs_f64().into())
+            .map_err(|err| JsltError::InvalidInput(err.to_string())),
+          Err(err) => Err(JsltError::InvalidInput(err.to_string())),
+        }
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Bad arguments for format-time".to_string(),
+      )),
+    }
   }
 }
 
 static_function! {
-  pub fn format_time(_timestamp: &Value, _format: &Value, _timezone: Option<&Value>) -> Result<Value> {
-    unimplemented!()
+  pub fn format_time(timestamp: &Value, format: &Value, _timezone: Option<&Value>) -> Result<Value> {
+    match (timestamp, format) {
+      (Value::Null, _) => Ok(Value::Null),
+      (Value::Number(timestamp), Value::String(format)) => {
+        let timestamp =
+          NaiveDateTime::UNIX_EPOCH + Duration::from_secs_f64(timestamp.as_f64().expect("Should work"));
+
+        Ok(Value::String(timestamp.format(format).to_string()))
+      }
+      _ => Err(JsltError::InvalidInput(
+        "Bad arguments for format-time".to_string(),
+      )),
+    }
   }
 }
 
