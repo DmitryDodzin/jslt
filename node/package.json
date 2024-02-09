@@ -13,7 +13,7 @@
   "types": "index.d.ts",
   "scripts": {
     "build": "cargo-cp-artifact -nc ./bin/index.node -- cargo build -p jslt-node --message-format=json-render-diagnostics",
-    "build:distributions": "pnpm run --filter '!jslt-node' build",
+    "build:distributions": "pnpm run --filter '!jslt-node-win32-x64' build",
     "install": "node ./check-bin.js || npm run build",
     "test": "cargo test"
   },
