@@ -15,9 +15,9 @@ importers:
       jslt-node-darwin-arm64:
         specifier: 0.0.1
         version: link:distributions/darwin-arm64
-      jslt-node-darwin-x86:
+      jslt-node-darwin-x64:
         specifier: 0.0.1
-        version: link:distributions/darwin-x86
+        version: link:distributions/darwin-x64
       jslt-node-linux-arm64:
         specifier: 0.0.1
         version: link:distributions/linux-arm64
