@@ -9,6 +9,8 @@ declare namespace Jslt {
     transformStr(value: string): string;
 
     transformParse<R = any>(value: string): R;
+
+    transformStringify<T = any>(value?: T): string;
   }
 
   export function compile(schema: string): NativeSchema;
@@ -18,6 +20,8 @@ declare namespace Jslt {
   export function transformStr(schema: string | NativeSchema, value: string): string;
 
   export function transformParse<R = any>(schema: string | NativeSchema, value: string): R;
+
+  export function transformStringify<T = any>(schema: string | NativeSchema, value?: T): string;
 }
 
 export = Jslt;

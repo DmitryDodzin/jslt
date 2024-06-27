@@ -31,9 +31,14 @@ Jslt.prototype.transformParse = function(input) {
   return jslt.transformParse(this[nativeschema], input);
 };
 
+Jslt.prototype.transformStringify = function(input) {
+  return jslt.transformStringify(this[nativeschema], input);
+};
+
 exports.Jslt = Jslt;
 
 exports.compile = jslt.compile;
 exports.transform = jslt.transform;
 exports.transformStr = jslt.transformStr;
 exports.transformParse = jslt.transformParse;
+exports.transformStringify = jslt.transformStringify;
