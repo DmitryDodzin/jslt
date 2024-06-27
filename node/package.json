@@ -18,19 +18,19 @@
     "test": "cargo test"
   },
   "dependencies": {
-    "detect-libc": "^2.0.2"
+    "detect-libc": "^2.0.3"
   },
   "devDependencies": {
-    "cargo-cp-artifact": "^0.1"
+    "cargo-cp-artifact": "^0.1.9"
   },
   "optionalDependencies": {
-    "jslt-node-darwin-arm64": "0.0.1",
-    "jslt-node-darwin-x64": "0.0.1",
-    "jslt-node-linux-arm64": "0.0.1",
-    "jslt-node-linux-x64": "0.0.1",
-    "jslt-node-linuxmusl-arm64": "0.0.1",
-    "jslt-node-linuxmusl-x64": "0.0.1",
-    "jslt-node-win32-x64": "0.0.1"
+    "jslt-node-darwin-arm64": "workspace:*",
+    "jslt-node-darwin-x64": "workspace:*",
+    "jslt-node-linux-arm64": "workspace:*",
+    "jslt-node-linux-x64": "workspace:*",
+    "jslt-node-linuxmusl-arm64": "workspace:*",
+    "jslt-node-linuxmusl-x64": "workspace:*",
+    "jslt-node-win32-x64": "workspace:*"
   },
   "engine": {
     "node": ">=12.0.0"

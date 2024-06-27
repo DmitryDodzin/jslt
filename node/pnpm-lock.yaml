@@ -9,34 +9,34 @@ importers:
   .:
     dependencies:
       detect-libc:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: ^2.0.3
+        version: 2.0.3
     optionalDependencies:
       jslt-node-darwin-arm64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/darwin-arm64
       jslt-node-darwin-x64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/darwin-x64
       jslt-node-linux-arm64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/linux-arm64
       jslt-node-linux-x64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/linux-x64
       jslt-node-linuxmusl-arm64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/linuxmusl-arm64
       jslt-node-linuxmusl-x64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/linuxmusl-x64
       jslt-node-win32-x64:
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:distributions/win32-x64
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/darwin-arm64:
     devDependencies:
@@ -87,7 +87,12 @@ packages:
     hasBin: true
     dev: true
 
-  /detect-libc@2.0.2:
-    resolution: {integrity: sha512-UX6sGumvvqSaXgdKGUsgZWqcUyIXZ/vZTrlRT/iobiKhGL0zL4d3osHj3uqllWJK+i+sixDS/3COVEOFbupFyw==}
+  /cargo-cp-artifact@0.1.9:
+    resolution: {integrity: sha512-6F+UYzTaGB+awsTXg0uSJA1/b/B3DDJzpKVRu0UmyI7DmNeaAl2RFHuTGIN6fEgpadRxoXGb7gbC1xo4C3IdyA==}
+    hasBin: true
+    dev: true
+
+  /detect-libc@2.0.3:
+    resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
     engines: {node: '>=8'}
     dev: false
