@@ -67,6 +67,23 @@ fn transform_parse(mut cx: FunctionContext) -> JsResult<JsValue> {
   convert::from_json_to_value(&mut cx, output)
 }
 
+fn transform_stringify(mut cx: FunctionContext) -> JsResult<JsString> {
+  let jslt = parse_schema_arg0(&mut cx)?;
+
+  let input = match cx.argument_opt(1) {
+    Some(value) => convert::from_value_to_json(&mut cx, value)?,
+    None => ().into(),
+  };
+
+  let output = jslt
+    .transform_value(&input)
+    .or_else(|err| cx.throw_error(err.to_string()))?;
+
+  let output = serde_json::to_string(&output).or_else(|err| cx.throw_error(err.to_string()))?;
+
+  Ok(cx.string(output))
+}
+
 #[derive(Debug)]
 pub struct CompiledSchema(Arc<Jslt>);
 
@@ -83,6 +100,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
   cx.export_function("transform", transform)?;
   cx.export_function("transformStr", transform_str)?;
   cx.export_function("transformParse", transform_parse)?;
+  cx.export_function("transformStringify", transform_stringify)?;
   cx.export_function("compile", compile)?;
   Ok(())
 }

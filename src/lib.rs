@@ -1,5 +1,4 @@
 #![feature(iter_intersperse)]
-#![cfg_attr(test, feature(lazy_cell))]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
 use std::{borrow::Cow, str::FromStr};
