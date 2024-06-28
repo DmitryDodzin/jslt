@@ -1,13 +1,13 @@
 {
   "name": "jslt-node-linuxmusl-arm64",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Jslt",
   "scripts": {
     "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/linuxmusl-arm64.node -- cargo zigbuild -p jslt-node --message-format=json-render-diagnostics  --release --target aarch64-unknown-linux-musl",
     "prepack": "npm run build"
   },
   "devDependencies": {
-    "cargo-cp-artifact": "^0.1"
+    "cargo-cp-artifact": "^0.1.9"
   },
   "exports": {
     "./jslt.node": "./lib/linuxmusl-arm64.node",

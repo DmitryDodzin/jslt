@@ -41,51 +41,46 @@ importers:
   distributions/darwin-arm64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/darwin-x64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/linux-arm64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/linux-x64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/linuxmusl-arm64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/linuxmusl-x64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
   distributions/win32-x64:
     devDependencies:
       cargo-cp-artifact:
-        specifier: ^0.1
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
 
 packages:
-
-  /cargo-cp-artifact@0.1.8:
-    resolution: {integrity: sha512-3j4DaoTrsCD1MRkTF2Soacii0Nx7UHCce0EwUf4fHnggwiE4fbmF2AbnfzayR36DF8KGadfh7M/Yfy625kgPlA==}
-    hasBin: true
-    dev: true
 
   /cargo-cp-artifact@0.1.9:
     resolution: {integrity: sha512-6F+UYzTaGB+awsTXg0uSJA1/b/B3DDJzpKVRu0UmyI7DmNeaAl2RFHuTGIN6fEgpadRxoXGb7gbC1xo4C3IdyA==}

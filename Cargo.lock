@@ -348,7 +348,7 @@ dependencies = [
 
 [[package]]
 name = "jslt"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "chrono",
  "pest",
@@ -366,7 +366,7 @@ dependencies = [
 
 [[package]]
 name = "jslt-node"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "jslt",
  "neon",

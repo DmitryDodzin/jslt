@@ -1,6 +1,6 @@
 {
   "name": "jslt-node",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Jslt",
   "files": [
     "src/*",
