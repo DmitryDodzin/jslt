@@ -39,10 +39,9 @@ fn transform(mut cx: FunctionContext) -> JsResult<JsValue> {
 
 fn transform_str(mut cx: FunctionContext) -> JsResult<JsString> {
   let jslt = parse_schema_arg0(&mut cx)?;
-  let input = cx.argument::<JsString>(1)?;
+  let input = cx.argument::<JsValue>(1)?;
 
-  let input =
-    serde_json::from_str(&input.value(&mut cx)).or_else(|err| cx.throw_error(err.to_string()))?;
+  let input = convert::from_string_or_buffer_to_json(&mut cx, input)?;
 
   let output = jslt
     .transform_value(&input)
@@ -55,10 +54,9 @@ fn transform_str(mut cx: FunctionContext) -> JsResult<JsString> {
 
 fn transform_parse(mut cx: FunctionContext) -> JsResult<JsValue> {
   let jslt = parse_schema_arg0(&mut cx)?;
-  let input = cx.argument::<JsString>(1)?;
+  let input = cx.argument::<JsValue>(1)?;
 
-  let input =
-    serde_json::from_str(&input.value(&mut cx)).or_else(|err| cx.throw_error(err.to_string()))?;
+  let input = convert::from_string_or_buffer_to_json(&mut cx, input)?;
 
   let output = jslt
     .transform_value(&input)
