@@ -11,8 +11,14 @@ exclude = [
 	"**/*.jslt"
 ]
 
+[[bin]]
+name = "jslt"
+required-features = ["binary"]
+
 [dependencies]
 chrono = "0.4"
+clap = { version = "4", features = ["derive"], optional = true }
+clio = { version = "0.3", features = ["clap-parse"], optional = true }
 pest = "2.7"
 pest_derive = "2.7"
 rand = "0.8"
@@ -24,6 +30,13 @@ sha256 = "1"
 thiserror = "1"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
+
+[features]
+default = ["binary"]
+binary = [
+	"dep:clap",
+	"dep:clio"
+]
 
 [workspace]
 members = [
