@@ -1,3 +1,5 @@
+#![feature(try_blocks)]
+
 use std::io::{BufRead, BufReader, Write};
 
 use clap::Parser;
@@ -26,25 +28,29 @@ struct Args {
   output: Output,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
   let mut args = Args::parse();
 
-  let jslt: Jslt = args.schema.parse()?;
+  let result: Result<(), Box<dyn std::error::Error>> = try {
+    let jslt: Jslt = args.schema.parse()?;
 
-  if args.multiline {
-    for line in BufReader::new(args.input).lines().take_while(Result::is_ok) {
-      let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
+    if args.multiline {
+      for line in BufReader::new(args.input).lines().take_while(Result::is_ok) {
+        let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
+
+        writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
+      }
+    } else {
+      let value = match args.raw {
+        Some(raw) => serde_json::from_str(&raw)?,
+        None => serde_json::from_reader(args.input)?,
+      };
 
       writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
     }
-  } else {
-    let value = match args.raw {
-      Some(raw) => serde_json::from_str(&raw)?,
-      None => serde_json::from_reader(args.input)?,
-    };
+  };
 
-    writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
+  if let Err(err) = result {
+    eprintln!("{err}");
   }
-
-  Ok(())
 }

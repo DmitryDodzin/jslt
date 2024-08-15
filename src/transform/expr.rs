@@ -8,7 +8,10 @@ use crate::{
   error::{JsltError, Result},
   expect_inner,
   parser::{FromPairs, Rule},
-  transform::{value::ValueTransformer, Transform},
+  transform::{
+    value::{accessor::AccessorTransformer, ValueTransformer},
+    Transform,
+  },
 };
 
 #[derive(Debug)]
@@ -423,6 +426,7 @@ impl Transform for IfStatementTransformer {
 pub struct FunctionCallTransformer {
   name: String,
   arguments: Vec<ExprTransformer>,
+  accessor: Option<AccessorTransformer>,
 }
 
 impl FromPairs for FunctionCallTransformer {
@@ -435,11 +439,27 @@ impl FromPairs for FunctionCallTransformer {
       .as_str()
       .to_owned();
 
-    let arguments = pairs
-      .map(|pair| ExprTransformer::from_pairs(&mut Pairs::single(pair)))
-      .collect::<Result<_>>()?;
+    let mut arguments = vec![];
 
-    Ok(FunctionCallTransformer { name, arguments })
+    while pairs
+      .peek()
+      .map(|pair| matches!(pair.as_rule(), Rule::Accessor))
+      .unwrap_or_default()
+    {
+      let pair = pairs.next().expect("pair should exist, was peeked");
+      arguments.push(ExprTransformer::from_pairs(&mut Pairs::single(pair))?)
+    }
+
+    let accessor = pairs
+      .next()
+      .map(|pair| AccessorTransformer::from_pairs(&mut Pairs::single(pair)))
+      .transpose()?;
+
+    Ok(FunctionCallTransformer {
+      name,
+      arguments,
+      accessor,
+    })
   }
 }
 
@@ -451,14 +471,19 @@ impl Transform for FunctionCallTransformer {
       .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?
       .clone();
 
-    function.call(
+    let result = function.call(
       Context::Borrowed(&context),
       &self
         .arguments
         .iter()
         .map(|arg| arg.transform_value(Context::Borrowed(&context), input))
         .collect::<Result<Vec<_>>>()?,
-    )
+    )?;
+
+    match self.accessor.as_ref() {
+      Some(accessor) => accessor.transform_value(Context::Borrowed(&context), &result),
+      None => Ok(result),
+    }
   }
 }
 

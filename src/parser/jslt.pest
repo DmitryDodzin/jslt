@@ -34,7 +34,7 @@ FromRangeAccessor = { Expr ~ ":" ~ Expr? }
 ToRangeAccessor = { Expr? ~ ":" ~ Expr }
 RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
 
-FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" ~ Accessor? }
+FunctionCall = ${ Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" ~ Accessor? }
 
 FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 
