@@ -13,14 +13,14 @@ struct Args {
 
   /// Use instead of input
   #[clap(long, conflicts_with = "input")]
-  raw: Option<String>,
+  text: Option<String>,
 
   /// When the input contains json values on each line
-  #[clap(long, short, conflicts_with = "raw")]
+  #[clap(long, short, conflicts_with = "text")]
   multiline: bool,
 
   /// Input file path
-  #[clap(value_parser, default_value = "-", conflicts_with = "raw")]
+  #[clap(value_parser, default_value = "-", conflicts_with = "text")]
   input: Input,
 
   /// Output file path
@@ -41,8 +41,8 @@ fn main() {
         writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
       }
     } else {
-      let value = match args.raw {
-        Some(raw) => serde_json::from_str(&raw)?,
+      let value = match args.text {
+        Some(text) => serde_json::from_str(&text)?,
         None => serde_json::from_reader(args.input)?,
       };
 
