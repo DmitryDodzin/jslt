@@ -47,7 +47,7 @@ ArrayFor = {
 }
 
 Object    = {
-    "{" ~ "}"
+    "{" ~ ObjectSpread? ~ "}"
   | "{" ~ (ObjectFor | Pair) ~ ("," ~ (ObjectSpread | ObjectFor | Pair))* ~ "}"
 }
 ObjectFor = {
