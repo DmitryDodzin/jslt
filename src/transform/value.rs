@@ -1,10 +1,12 @@
+use std::{fmt, fmt::Write};
+
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
   context::Context,
   error::{JsltError, Result},
-  expect_inner,
+  expect_inner, format,
   parser::{FromPairs, Rule},
   transform::{
     expr::ExprTransformer,
@@ -49,12 +51,25 @@ impl Transform for BooleanTransformer {
   }
 }
 
+impl format::Display for BooleanTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let BooleanTransformer(value) = self;
+    write!(f, "{value}")
+  }
+}
+
 #[derive(Debug)]
 pub struct NullTransformer;
 
 impl Transform for NullTransformer {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::Null)
+  }
+}
+
+impl format::Display for NullTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    write!(f, "null")
   }
 }
 
@@ -90,6 +105,13 @@ impl Transform for NumberTransformer {
   }
 }
 
+impl format::Display for NumberTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let NumberTransformer(value) = self;
+    write!(f, "{value}")
+  }
+}
+
 #[derive(Debug)]
 pub struct ScopeTransformer(Box<ExprTransformer>);
 
@@ -106,6 +128,15 @@ impl FromPairs for ScopeTransformer {
 impl Transform for ScopeTransformer {
   fn transform_value(&self, context: Context<'_>, input: &Value) -> Result<Value> {
     self.0.transform_value(context, input)
+  }
+}
+
+impl format::Display for ScopeTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let ScopeTransformer(expr) = self;
+    f.write_char('(')?;
+    format::Display::fmt(expr.as_ref(), f)?;
+    f.write_char(')')
   }
 }
 
@@ -135,6 +166,13 @@ impl FromPairs for StringTransformer {
 impl Transform for StringTransformer {
   fn transform_value(&self, _: Context<'_>, _: &Value) -> Result<Value> {
     Ok(Value::String(self.0.clone()))
+  }
+}
+
+impl format::Display for StringTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let StringTransformer(value) = self;
+    write!(f, "{value:?}")
   }
 }
 
@@ -192,6 +230,24 @@ impl Transform for ValueTransformer {
   }
 }
 
+impl format::Display for ValueTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    match self {
+      ValueTransformer::Accessor(accessor) => {
+        format::Display::fmt(&accessor::RootAccessorDisplay(accessor), f)
+      }
+      ValueTransformer::Array(array) => format::Display::fmt(array, f),
+      ValueTransformer::Boolean(boolean) => format::Display::fmt(boolean, f),
+      ValueTransformer::Null(null) => format::Display::fmt(null, f),
+      ValueTransformer::Number(number) => format::Display::fmt(number, f),
+      ValueTransformer::Object(object) => format::Display::fmt(object, f),
+      ValueTransformer::Scope(scope) => format::Display::fmt(scope, f),
+      ValueTransformer::String(string) => format::Display::fmt(string, f),
+      ValueTransformer::Variable(variable) => format::Display::fmt(variable, f),
+    }
+  }
+}
+
 #[derive(Debug)]
 pub struct VariableTransformer(String, Option<AccessorTransformer>);
 
@@ -219,5 +275,19 @@ impl Transform for VariableTransformer {
       Some(accessor) => accessor.transform_value(context, &value),
       None => Ok(value),
     }
+  }
+}
+
+impl format::Display for VariableTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let VariableTransformer(name, accessor) = self;
+
+    write!(f, "${name}")?;
+
+    if let Some(accessor) = accessor {
+      format::Display::fmt(accessor, f)?;
+    }
+
+    Ok(())
   }
 }

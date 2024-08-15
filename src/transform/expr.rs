@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, fmt::Write as _, sync::Arc};
 
 use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::{
   context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
-  expect_inner,
+  expect_inner, format,
   parser::{FromPairs, Rule},
   transform::{
     value::{accessor::AccessorTransformer, ValueTransformer},
@@ -64,6 +64,19 @@ impl FromPairs for ExprTransformer {
   }
 }
 
+impl format::Display for ExprTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    match self {
+      ExprTransformer::Value(val) => format::Display::fmt(val, f),
+      ExprTransformer::IfStatement(ifstmt) => format::Display::fmt(ifstmt, f),
+      ExprTransformer::FunctionCall(fcall) => format::Display::fmt(fcall, f),
+      ExprTransformer::FunctionDef(fdef) => format::Display::fmt(fdef, f),
+      ExprTransformer::OperatorExpr(oper_expr) => format::Display::fmt(oper_expr, f),
+      ExprTransformer::VariableDef(variable_def) => format::Display::fmt(variable_def, f),
+    }
+  }
+}
+
 #[derive(Debug)]
 pub enum OperatorTransformer {
   Add,
@@ -78,6 +91,15 @@ pub enum OperatorTransformer {
   Lte,
   Equal,
   NotEqual,
+}
+
+impl fmt::Display for OperatorTransformer {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      OperatorTransformer::Add => f.write_char('+'),
+      _ => unimplemented!("{self:#?}"),
+    }
+  }
 }
 
 #[derive(Debug)]
@@ -342,6 +364,18 @@ impl Transform for OperatorExprTransformer {
   }
 }
 
+impl format::Display for OperatorExprTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let OperatorExprTransformer { lhs, operator, rhs } = self;
+
+    format::Display::fmt(lhs.as_ref(), f)?;
+
+    write!(f, " {operator} ")?;
+
+    format::Display::fmt(rhs.as_ref(), f)
+  }
+}
+
 #[derive(Debug)]
 pub struct ForTransformer<B> {
   pub(super) source: Box<ExprTransformer>,
@@ -372,6 +406,37 @@ where
       condition,
       output: Box::new(output),
     })
+  }
+}
+
+impl<B> format::Display for ForTransformer<B>
+where
+  B: format::Display,
+{
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let ForTransformer {
+      source,
+      condition,
+      output,
+    } = self;
+
+    f.write_str("for (")?;
+    format::Display::fmt(source.as_ref(), f)?;
+    f.write_str(")\n")?;
+
+    let mut slot = None;
+    let mut state = Default::default();
+
+    let mut writer = format::PadAdapter::wrap(f, &mut slot, &mut state);
+    format::Display::fmt(output.as_ref(), &mut writer)?;
+
+    if let Some(condition) = condition {
+      writer.write_str("\n  if (")?;
+      format::Display::fmt(condition, &mut writer)?;
+      writer.write_char(')')?;
+    }
+
+    Ok(())
   }
 }
 
@@ -422,6 +487,40 @@ impl Transform for IfStatementTransformer {
   }
 }
 
+impl format::Display for IfStatementTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let IfStatementTransformer {
+      condition,
+      value,
+      fallback,
+    } = self;
+
+    f.write_str("if (")?;
+    format::Display::fmt(condition.as_ref(), f)?;
+    f.write_str(")\n")?;
+
+    let mut slot = None;
+    let mut state = Default::default();
+
+    let mut writer = format::PadAdapter::wrap(f, &mut slot, &mut state);
+
+    format::Display::fmt(value.as_ref(), &mut writer)?;
+
+    if let Some(fallback) = fallback {
+      f.write_str("\nelse\n")?;
+
+      let mut slot = None;
+      let mut state = Default::default();
+
+      let mut writer = format::PadAdapter::wrap(f, &mut slot, &mut state);
+
+      format::Display::fmt(fallback.as_ref(), &mut writer)?;
+    }
+
+    Ok(())
+  }
+}
+
 #[derive(Debug)]
 pub struct FunctionCallTransformer {
   name: String,
@@ -439,16 +538,12 @@ impl FromPairs for FunctionCallTransformer {
       .as_str()
       .to_owned();
 
-    let mut arguments = vec![];
-
-    while pairs
-      .peek()
-      .map(|pair| matches!(pair.as_rule(), Rule::Accessor))
-      .unwrap_or_default()
-    {
-      let pair = pairs.next().expect("pair should exist, was peeked");
-      arguments.push(ExprTransformer::from_pairs(&mut Pairs::single(pair))?)
-    }
+    let arguments = pairs
+      .next()
+      .ok_or(JsltError::UnexpectedEnd)?
+      .into_inner()
+      .map(|pair| ExprTransformer::from_pairs(&mut Pairs::single(pair)))
+      .collect::<Result<_, _>>()?;
 
     let accessor = pairs
       .next()
@@ -484,6 +579,38 @@ impl Transform for FunctionCallTransformer {
       Some(accessor) => accessor.transform_value(Context::Borrowed(&context), &result),
       None => Ok(result),
     }
+  }
+}
+
+impl format::Display for FunctionCallTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let FunctionCallTransformer {
+      name,
+      arguments,
+      accessor,
+    } = self;
+
+    write!(f, "{name}(")?;
+
+    if !arguments.is_empty() {
+      let last_argument_index = arguments.len() - 1;
+
+      for (index, item) in arguments.iter().enumerate() {
+        format::Display::fmt(item, f)?;
+
+        if index != last_argument_index {
+          f.write_str(", ")?;
+        }
+      }
+    }
+
+    f.write_char(')')?;
+
+    if let Some(accessor) = accessor {
+      format::Display::fmt(accessor, f)?;
+    }
+
+    Ok(())
   }
 }
 
@@ -545,6 +672,29 @@ impl Transform for FunctionDefTransformer {
   }
 }
 
+impl format::Display for FunctionDefTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let FunctionDefTransformer {
+      name,
+      arguments,
+      expr,
+      next,
+    } = self;
+
+    writeln!(f, "def {name}({})", arguments.join(", "))?;
+
+    let mut slot = None;
+    let mut state = Default::default();
+
+    let mut writer = format::PadAdapter::wrap(f, &mut slot, &mut state);
+    format::Display::fmt(expr.as_ref(), &mut writer)?;
+
+    f.write_str("\n\n")?;
+
+    format::Display::fmt(next.as_ref(), f)
+  }
+}
+
 #[derive(Debug)]
 pub struct VariableDefTransformer {
   name: String,
@@ -579,5 +729,17 @@ impl Transform for VariableDefTransformer {
     context.to_mut().variables.insert(name, value);
 
     self.next.transform_value(context, input)
+  }
+}
+
+impl format::Display for VariableDefTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let VariableDefTransformer { name, value, next } = self;
+
+    write!(f, "let {name} = ")?;
+    format::Display::fmt(value.as_ref(), f)?;
+    f.write_str("\n\n")?;
+
+    format::Display::fmt(next.as_ref(), f)
   }
 }

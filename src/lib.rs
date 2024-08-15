@@ -1,7 +1,7 @@
 #![feature(iter_intersperse)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use std::{borrow::Cow, str::FromStr};
+use std::{borrow::Cow, fmt, str::FromStr};
 
 use pest::Parser;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ use crate::{
 
 pub mod context;
 pub mod error;
+pub mod format;
 mod macros;
 pub mod parser;
 pub mod transform;
@@ -55,6 +56,18 @@ impl FromStr for Jslt {
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })
+  }
+}
+
+impl fmt::Display for Jslt {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", format::format(self))
+  }
+}
+
+impl format::Display for Jslt {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    format::Display::fmt(&self.builder, f)
   }
 }
 

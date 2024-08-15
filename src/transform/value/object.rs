@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::Deref};
+use std::{borrow::Cow, fmt, fmt::Write, ops::Deref};
 
 use pest::iterators::Pairs;
 use serde_json::Value;
@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::{
   context::{builtins::boolean_cast, Context},
   error::{JsltError, Result},
-  expect_inner,
+  expect_inner, format,
   parser::{FromPairs, Rule},
   transform::{
     expr::{ExprTransformer, ForTransformer},
@@ -25,6 +25,16 @@ impl FromPairs for PairTransformer {
     let value = ExprTransformer::from_pairs(&mut inner)?;
 
     Ok(PairTransformer(key, value))
+  }
+}
+
+impl format::Display for PairTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let PairTransformer(key, value) = self;
+
+    format::Display::fmt(key, f)?;
+    f.write_str(": ")?;
+    format::Display::fmt(value, f)
   }
 }
 
@@ -156,11 +166,55 @@ impl Transform for ObjectTransformer {
   }
 }
 
+impl format::Display for ObjectTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    if self.inner.is_empty() {
+      f.write_str("{}")
+    } else {
+      f.write_str("{\n")?;
+
+      let last_item_index = self.inner.len() - 1;
+      let mut slot = None;
+      let mut state = Default::default();
+
+      let mut writer = format::PadAdapter::wrap(f, &mut slot, &mut state);
+
+      for (index, item) in self.inner.iter().enumerate() {
+        format::Display::fmt(item, &mut writer)?;
+
+        if index != last_item_index {
+          writer.write_str(",\n")?;
+        } else {
+          writer.write_str("\n")?;
+        }
+      }
+
+      f.write_str("}")?;
+
+      Ok(())
+    }
+  }
+}
+
 #[derive(Debug)]
 pub enum ObjectTransformerInner {
   Pair(PairTransformer),
   For(ObjectForTransformer),
   Spread(ExprTransformer),
+}
+
+impl format::Display for ObjectTransformerInner {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    match self {
+      ObjectTransformerInner::Pair(pair) => format::Display::fmt(pair, f),
+      ObjectTransformerInner::For(object_for) => format::Display::fmt(object_for, f),
+      ObjectTransformerInner::Spread(expr) => {
+        f.write_str("*: ")?;
+
+        format::Display::fmt(expr, f)
+      }
+    }
+  }
 }
 
 pub type ObjectForTransformer = ForTransformer<PairTransformer>;

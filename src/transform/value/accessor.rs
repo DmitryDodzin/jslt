@@ -1,10 +1,12 @@
+use std::{fmt, fmt::Write as _};
+
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
   context::Context,
   error::{JsltError, Result},
-  expect_inner,
+  expect_inner, format,
   parser::{FromPairs, Rule},
   transform::{expr::ExprTransformer, Transform},
 };
@@ -121,6 +123,44 @@ impl Transform for AccessorTransformer {
   }
 }
 
+impl format::Display for AccessorTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let AccessorTransformer {
+      ident,
+      keys,
+      nested,
+    } = self;
+
+    if !ident.is_empty() {
+      write!(f, ".{ident}")?;
+    }
+
+    for key in keys {
+      format::Display::fmt(key, f)?;
+    }
+
+    if let Some(nested) = nested {
+      format::Display::fmt(nested.as_ref(), f)?;
+    }
+
+    Ok(())
+  }
+}
+
+pub struct RootAccessorDisplay<'a>(pub &'a AccessorTransformer);
+
+impl format::Display for RootAccessorDisplay<'_> {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    let RootAccessorDisplay(accessor) = *self;
+
+    if accessor.ident.is_empty() {
+      f.write_char('.')?;
+    }
+
+    format::Display::fmt(accessor, f)
+  }
+}
+
 #[derive(Debug)]
 pub enum KeyAccessorTransformer {
   Index(ExprTransformer),
@@ -177,5 +217,29 @@ impl FromPairs for KeyAccessorTransformer {
       }
       _ => Err(JsltError::UnexpectedContent(Rule::KeyAccessor)),
     }
+  }
+}
+
+impl format::Display for KeyAccessorTransformer {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    f.write_char('[')?;
+
+    match self {
+      KeyAccessorTransformer::Index(expr) => format::Display::fmt(expr, f)?,
+      KeyAccessorTransformer::Range { from, to } => {
+        if let Some(from) = from {
+          format::Display::fmt(from, f)?;
+        }
+
+        f.write_char(':')?;
+
+        if let Some(to) = to {
+          format::Display::fmt(to, f)?;
+        }
+      }
+    }
+
+    f.write_char(']')?;
+    Ok(())
   }
 }

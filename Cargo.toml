@@ -10,9 +10,16 @@ exclude = [
 	".github",
 	"**/*.jslt"
 ]
+default-run = "jslt"
 
 [[bin]]
 name = "jslt"
+path = "bin/jslt.rs"
+required-features = ["binary"]
+
+[[bin]]
+name = "jslt-fmt"
+path = "bin/jslt-fmt.rs"
 required-features = ["binary"]
 
 [dependencies]
@@ -32,7 +39,7 @@ url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
-default = ["binary"]
+default = []
 binary = [
 	"dep:clap",
 	"dep:clio"
