@@ -23,6 +23,10 @@ struct Args {
   #[clap(value_parser, default_value = "-", conflicts_with = "text")]
   input: Input,
 
+  /// Pretty print output
+  #[clap(long, short, conflicts_with = "text")]
+  pretty: bool,
+
   /// Output file path
   #[clap(long, short, value_parser, default_value = "-")]
   output: Output,
@@ -38,7 +42,13 @@ fn main() {
       for line in BufReader::new(args.input).lines().take_while(Result::is_ok) {
         let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
 
-        writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
+        let value = jslt.transform_value(&value)?;
+
+        if args.pretty {
+          writeln!(args.output, "{}", serde_json::to_string_pretty(&value)?)?;
+        } else {
+          writeln!(args.output, "{value}")?;
+        }
       }
     } else {
       let value = match args.text {
@@ -46,7 +56,13 @@ fn main() {
         None => serde_json::from_reader(args.input)?,
       };
 
-      writeln!(args.output, "{}", jslt.transform_value(&value)?)?;
+      let value = jslt.transform_value(&value)?;
+
+      if args.pretty {
+        writeln!(args.output, "{}", serde_json::to_string_pretty(&value)?)?;
+      } else {
+        writeln!(args.output, "{value}")?;
+      }
     }
   };
 

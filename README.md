@@ -52,6 +52,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Cli
+
+Test branch install
+```bash
+cargo install --features binary --git https://github.com/DmitryDodzin/jslt.git --branch qol
+
+# Optional to install with http client with (ureq/curl)
+cargo install --features binary  --features clio/http-ureq --git https://github.com/DmitryDodzin/jslt.git --branch qol
+# or 
+cargo install --features binary --features clio/http-curl --git https://github.com/DmitryDodzin/jslt.git --branch qol
+```
+
+Currently there are 2 binaries that ship with the libaray `jslt` and `jslt-fmt`.
+
+```bash
+echo '{"foo": "bar"}' | jslt '{ "foo_" + .foo : 2000 }'
+# {"foo_bar":2000}
+```
+
+
 ## Status: POC
 
 There is very minial support for selectors, constants and for loops and no garantee this will continue any further in the current phase.

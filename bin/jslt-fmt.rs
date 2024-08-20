@@ -8,11 +8,11 @@ use jslt::Jslt;
 
 #[derive(Debug, Parser)]
 struct Args {
-  /// Input file path
+  /// Input file path, use '-' for stdin
   #[clap(value_parser, default_value = "-")]
   input: Input,
 
-  /// Output file path
+  /// Output file path, use '-' for stdout
   #[clap(long, short, value_parser, default_value = "-")]
   output: Output,
 }

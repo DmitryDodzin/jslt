@@ -97,7 +97,17 @@ impl fmt::Display for OperatorTransformer {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       OperatorTransformer::Add => f.write_char('+'),
-      _ => unimplemented!("{self:#?}"),
+      OperatorTransformer::Sub => f.write_char('-'),
+      OperatorTransformer::Div => f.write_char('/'),
+      OperatorTransformer::Mul => f.write_char('*'),
+      OperatorTransformer::And => f.write_str("and"),
+      OperatorTransformer::Or => f.write_str("or"),
+      OperatorTransformer::Gt => f.write_str(">"),
+      OperatorTransformer::Gte => f.write_str(">="),
+      OperatorTransformer::Lt => f.write_str("<"),
+      OperatorTransformer::Lte => f.write_str("<="),
+      OperatorTransformer::Equal => f.write_str("=="),
+      OperatorTransformer::NotEqual => f.write_str("!="),
     }
   }
 }
