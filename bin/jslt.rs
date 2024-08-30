@@ -24,7 +24,7 @@ struct Args {
   input: Input,
 
   /// Pretty print output
-  #[clap(long, short, conflicts_with = "text")]
+  #[clap(long, short)]
   pretty: bool,
 
   /// Output file path

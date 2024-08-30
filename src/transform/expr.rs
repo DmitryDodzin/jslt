@@ -573,7 +573,7 @@ impl Transform for FunctionCallTransformer {
     let function = context
       .functions
       .get(&self.name)
-      .ok_or_else(|| JsltError::Unknown(format!("Unknown Functuion: {}", self.name)))?
+      .ok_or_else(|| JsltError::RuntimeError(format!("Unknown Functuion: {}", self.name)))?
       .clone();
 
     let result = function.call(

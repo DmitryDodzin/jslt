@@ -514,6 +514,7 @@ dependencies = [
  "chrono",
  "clap",
  "clio",
+ "jslt-macro",
  "pest",
  "pest_derive",
  "rand",
@@ -525,6 +526,15 @@ dependencies = [
  "thiserror",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "jslt-macro"
+version = "0.0.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

@@ -24,5 +24,5 @@ pub enum JsltError {
   #[error(transparent)]
   SerdeJson(#[from] serde_json::Error),
   #[error("{0}")]
-  Unknown(String),
+  RuntimeError(String),
 }

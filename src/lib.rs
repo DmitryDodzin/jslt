@@ -288,7 +288,7 @@ mod tests {
     let output = jslt.transform_value(&json!("foobar")).err();
 
     assert!(
-      matches!(output, Some(JsltError::Unknown(ref err)) if err == "foobar"),
+      matches!(output, Some(JsltError::RuntimeError(ref err)) if err == "foobar"),
       "Bad Err: {output:?}"
     );
 

@@ -23,6 +23,8 @@ path = "bin/jslt-fmt.rs"
 required-features = ["binary"]
 
 [dependencies]
+jslt-macro = { path = "./macro", version = "0.0.1" }
+
 chrono = "0.4"
 clap = { version = "4", features = ["derive"], optional = true }
 clio = { version = "0.3", features = ["clap-parse"], optional = true }
@@ -39,7 +41,7 @@ url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
-default = []
+default = ["binary"]
 binary = [
 	"dep:clap",
 	"dep:clio"
@@ -47,6 +49,7 @@ binary = [
 
 [workspace]
 members = [
+	"macro",
 	"node"
 ]
 
