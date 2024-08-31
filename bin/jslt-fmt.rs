@@ -7,6 +7,7 @@ use clio::{Input, Output};
 use jslt::Jslt;
 
 #[derive(Debug, Parser)]
+#[command(version, about, styles = jslt::_get_clap_styles())]
 struct Args {
   /// Input file path, use '-' for stdin
   #[clap(value_parser, default_value = "-")]

@@ -7,6 +7,7 @@ use clio::{Input, Output};
 use jslt::Jslt;
 
 #[derive(Debug, Parser)]
+#[command(version, about, styles = jslt::_get_clap_styles())]
 struct Args {
   /// Jslt Schema
   schema: String,

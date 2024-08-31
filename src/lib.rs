@@ -70,6 +70,43 @@ impl format::Display for Jslt {
   }
 }
 
+#[doc(hidden)]
+#[cfg(feature = "binary")]
+pub fn _get_clap_styles() -> clap::builder::Styles {
+  use clap::builder::styling;
+
+  clap::builder::Styles::styled()
+    .usage(
+      styling::Style::new()
+        .bold()
+        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+    )
+    .header(
+      styling::Style::new()
+        .bold()
+        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+    )
+    .literal(styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))))
+    .invalid(
+      styling::Style::new()
+        .bold()
+        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+    )
+    .error(
+      styling::Style::new()
+        .bold()
+        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+    )
+    .valid(
+      styling::Style::new()
+        .bold()
+        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
+    )
+    .placeholder(
+      styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::White))),
+    )
+}
+
 #[cfg(test)]
 mod tests {
   use std::{ops::Deref, sync::LazyLock};
