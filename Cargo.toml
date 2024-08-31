@@ -41,7 +41,7 @@ url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
-default = ["binary"]
+default = []
 binary = [
 	"dep:clap",
 	"dep:clio"
