@@ -26,7 +26,7 @@ required-features = ["binary"]
 jslt-macro = { path = "./macro", version = "0.0.1" }
 
 chrono = "0.4"
-clap = { version = "4", features = ["derive"], optional = true }
+clap = { version = "4", features = ["color", "derive"], optional = true }
 clio = { version = "0.3", features = ["clap-parse"], optional = true }
 pest = "2.7"
 pest_derive = "2.7"
@@ -41,7 +41,7 @@ url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 
 [features]
-default = ["binary"]
+default = []
 binary = [
 	"dep:clap",
 	"dep:clio"
