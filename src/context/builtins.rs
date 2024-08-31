@@ -555,10 +555,6 @@ pub fn uuid(arguments: &[Value]) -> Result<Value> {
   let uuid = match (&arguments[0], &arguments[1]) {
     (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
       unimplemented!()
-      // Uuid::from_u64_pair(
-      //   left.as_u64().expect("should be u64"),
-      //   right.as_u64().expect("should be u64"),
-      // )
     }
     (Value::Null, Value::Null) => Uuid::nil(),
     _ => {

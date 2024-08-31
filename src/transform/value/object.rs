@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::{
   context::{builtins::boolean_cast, Context},
-  error::Result,
+  error::{JsltError, Result},
   format,
   parser::{FromPairs, Rule},
   transform::{
@@ -90,14 +90,16 @@ impl Transform for ObjectTransformer {
     for inner in &self.inner {
       match inner {
         ObjectTransformerInner::Pair(PairTransformer(key, value)) => {
-          let key = key
-            .transform_value(Context::Borrowed(&context), input)?
-            .as_str()
-            .expect("Should result in string")
-            .to_owned();
+          let key = key.transform_value(Context::Borrowed(&context), input)?;
+
+          let key = key.as_str().ok_or_else(|| {
+            JsltError::RuntimeError(format!(
+              "expression outout for key should be a string but got {key}"
+            ))
+          })?;
 
           items.insert(
-            key,
+            key.to_owned(),
             value.transform_value(Context::Borrowed(&context), input)?,
           );
         }
@@ -134,20 +136,24 @@ impl Transform for ObjectTransformer {
               }
             }
 
-            let key = key
-              .transform_value(Context::Borrowed(&context), &input)?
-              .as_str()
-              .expect("Should result in string")
-              .to_owned();
+            let key = key.transform_value(Context::Borrowed(&context), &input)?;
+
+            let key = key.as_str().ok_or_else(|| {
+              JsltError::RuntimeError(format!(
+                "expression outout for key should be a string but got {key}"
+              ))
+            })?;
 
             items.insert(
-              key,
+              key.to_owned(),
               value.transform_value(Context::Borrowed(&context), &input)?,
             );
           }
         }
         ObjectTransformerInner::Spread(expr) => {
-          let source = input.as_object().expect("Should be object");
+          let source = input.as_object().ok_or_else(|| {
+            JsltError::RuntimeError(format!("object spread expected and object but got {input}"))
+          })?;
 
           for key in source.keys() {
             if items.contains_key(key) {
