@@ -1,12 +1,13 @@
 use std::{fmt, fmt::Write};
 
+use jslt_macro::expect_inner;
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
   context::Context,
   error::{JsltError, Result},
-  expect_inner, format,
+  format,
   parser::{FromPairs, Rule},
   transform::{
     expr::ExprTransformer,

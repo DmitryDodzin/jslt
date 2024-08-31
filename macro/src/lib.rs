@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+use derive_syn_parse::Parse;
 use quote::{format_ident, quote};
 use syn::parse_macro_input;
 
@@ -45,4 +46,39 @@ pub fn static_function(
       _wrapped_implementation( #(#arguments,)* )
     }
   }.into()
+}
+
+#[derive(Parse, Debug)]
+struct ExpectInnerArgs {
+  pairs: syn::Ident,
+  _period_token: syn::Token![,],
+  rule: syn::Type,
+}
+
+#[proc_macro]
+pub fn expect_inner(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  let ExpectInnerArgs { pairs, rule, .. } = parse_macro_input!(item as ExpectInnerArgs);
+
+  let jslt = format_ident!("{}", *CRATE_NAME);
+
+  quote! {
+    {
+      let Some(pair) = #pairs.next() else {
+        return Err(#jslt::error::JsltError::UnexpectedEnd);
+      };
+
+      let rule = pair.as_rule();
+
+      if !matches!(rule, #rule) {
+        return Err(#jslt::error::JsltError::UnexpectedInput(
+          #rule,
+          rule,
+          pair.as_str().to_owned(),
+        ));
+      }
+
+      Ok::<Pairs<_>, #jslt::error::JsltError>(pair.into_inner())
+    }
+  }
+  .into()
 }

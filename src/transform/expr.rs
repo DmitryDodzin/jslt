@@ -1,12 +1,13 @@
 use std::{fmt, fmt::Write as _, sync::Arc};
 
+use jslt_macro::expect_inner;
 use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
 
 use crate::{
   context::{builtins, Context, DynamicFunction, JsltFunction},
   error::{JsltError, Result},
-  expect_inner, format,
+  format,
   parser::{FromPairs, Rule},
   transform::{
     value::{accessor::AccessorTransformer, ValueTransformer},

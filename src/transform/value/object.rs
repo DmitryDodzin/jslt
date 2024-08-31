@@ -1,12 +1,13 @@
 use std::{borrow::Cow, fmt, fmt::Write, ops::Deref};
 
+use jslt_macro::expect_inner;
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
   context::{builtins::boolean_cast, Context},
-  error::{JsltError, Result},
-  expect_inner, format,
+  error::Result,
+  format,
   parser::{FromPairs, Rule},
   transform::{
     expr::{ExprTransformer, ForTransformer},
