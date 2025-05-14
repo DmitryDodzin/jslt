@@ -4,7 +4,7 @@ use std::{
   time::{Duration, SystemTime},
 };
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime};
 use jslt_macro::static_function;
 use regex_lite::Regex;
 use serde_json::{json, Value};
@@ -76,65 +76,65 @@ pub fn fallback(arguments: &[Value]) -> Result<Value> {
 #[static_function]
 pub fn min(left: &Value, right: &Value) -> Result<Value> {
   match (left, right) {
-      (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
-        left
-          .as_u64()
-          .expect("should be u64")
-          .min(right.as_u64().expect("should be u64"))
-          .into(),
-      ),
-      (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
-        left
-          .as_i64()
-          .expect("should be i64")
-          .min(right.as_i64().expect("should be i64"))
-          .into(),
-      ),
-      (Value::Number(left), Value::Number(right)) => {
-        if left.as_f64() < right.as_f64() {
-          Ok(Value::Number(left.clone()))
-        } else {
-          Ok(Value::Number(right.clone()))
-        }
+    (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
+      left
+        .as_u64()
+        .expect("should be u64")
+        .min(right.as_u64().expect("should be u64"))
+        .into(),
+    ),
+    (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
+      left
+        .as_i64()
+        .expect("should be i64")
+        .min(right.as_i64().expect("should be i64"))
+        .into(),
+    ),
+    (Value::Number(left), Value::Number(right)) => {
+      if left.as_f64() < right.as_f64() {
+        Ok(Value::Number(left.clone()))
+      } else {
+        Ok(Value::Number(right.clone()))
       }
-      (Value::String(left), Value::String(right)) => Ok(Value::String(left.min(right).to_string())),
-      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-      _ => Err(JsltError::InvalidInput(format!(
-        "Unimplemented operation min between ({left} and {right}), maybe use number() before passing to min"
-      ))),
     }
+    (Value::String(left), Value::String(right)) => Ok(Value::String(left.min(right).to_string())),
+    (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+    _ => Err(JsltError::InvalidInput(format!(
+      "Unimplemented operation min between ({left} and {right}), maybe use number() before passing to min"
+    ))),
+  }
 }
 
 #[static_function]
 pub fn max(left: &Value, right: &Value) -> Result<Value> {
   match (left, right) {
-      (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
-        left
-          .as_u64()
-          .expect("should be u64")
-          .max(right.as_u64().expect("should be u64"))
-          .into(),
-      ),
-      (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
-        left
-          .as_i64()
-          .expect("should be i64")
-          .max(right.as_i64().expect("should be i64"))
-          .into(),
-      ),
-      (Value::Number(left), Value::Number(right)) => {
-        if left.as_f64() > right.as_f64() {
-          Ok(Value::Number(left.clone()))
-        }  else {
-          Ok(Value::Number(right.clone()))
-        }
+    (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => Ok(
+      left
+        .as_u64()
+        .expect("should be u64")
+        .max(right.as_u64().expect("should be u64"))
+        .into(),
+    ),
+    (Value::Number(left), Value::Number(right)) if left.is_i64() && right.is_i64() => Ok(
+      left
+        .as_i64()
+        .expect("should be i64")
+        .max(right.as_i64().expect("should be i64"))
+        .into(),
+    ),
+    (Value::Number(left), Value::Number(right)) => {
+      if left.as_f64() > right.as_f64() {
+        Ok(Value::Number(left.clone()))
+      } else {
+        Ok(Value::Number(right.clone()))
       }
-      (Value::String(left), Value::String(right)) => Ok(Value::String(left.max(right).to_string())),
-      (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
-      _ => Err(JsltError::InvalidInput(format!(
-        "Unimplemented operation max between ({left} and {right}, maybe use number() before passing to max"
-      ))),
     }
+    (Value::String(left), Value::String(right)) => Ok(Value::String(left.max(right).to_string())),
+    (_, Value::Null) | (Value::Null, _) => Ok(Value::Null),
+    _ => Err(JsltError::InvalidInput(format!(
+      "Unimplemented operation max between ({left} and {right}, maybe use number() before passing to max"
+    ))),
+  }
 }
 
 #[static_function]
@@ -560,7 +560,7 @@ pub fn uuid(arguments: &[Value]) -> Result<Value> {
     _ => {
       return Err(JsltError::InvalidInput(
         "Input of uuid must be either empty or with 2 numbers or nulls for zeroed".to_string(),
-      ))
+      ));
     }
   };
 
@@ -749,7 +749,7 @@ pub fn parse_time(timestamp: &Value, format: &Value, _fallback: Option<&Value>) 
     (Value::Null, _) => Ok(Value::Null),
     (Value::String(timestamp), Value::String(format)) => {
       match NaiveDateTime::parse_from_str(timestamp, format) {
-        Ok(timestamp) => (timestamp - NaiveDateTime::UNIX_EPOCH)
+        Ok(timestamp) => (timestamp - DateTime::UNIX_EPOCH.naive_utc())
           .to_std()
           .map(|timestamp| timestamp.as_secs_f64().into())
           .map_err(|err| JsltError::InvalidInput(err.to_string())),
@@ -767,7 +767,7 @@ pub fn format_time(timestamp: &Value, format: &Value, _timezone: Option<&Value>)
   match (timestamp, format) {
     (Value::Null, _) => Ok(Value::Null),
     (Value::Number(timestamp), Value::String(format)) => {
-      let timestamp = NaiveDateTime::UNIX_EPOCH
+      let timestamp = DateTime::UNIX_EPOCH
         + Duration::from_secs_f64(timestamp.as_f64().ok_or_else(|| {
           JsltError::RuntimeError(format!("unable to convert {timestamp:?} to f64"))
         })?);

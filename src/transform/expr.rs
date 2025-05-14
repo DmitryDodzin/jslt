@@ -579,6 +579,7 @@ impl Transform for FunctionCallTransformer {
 
     let result = function.call(
       Context::Borrowed(&context),
+      input,
       &self
         .arguments
         .iter()

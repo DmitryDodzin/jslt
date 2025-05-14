@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 #![feature(iter_intersperse)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
@@ -72,39 +73,44 @@ impl format::Display for Jslt {
 
 #[doc(hidden)]
 #[cfg(feature = "binary")]
-pub fn _get_clap_styles() -> clap::builder::Styles {
+pub mod _binary {
   use clap::builder::styling;
+  use clio as _;
 
-  clap::builder::Styles::styled()
-    .usage(
-      styling::Style::new()
-        .bold()
-        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
-    )
-    .header(
-      styling::Style::new()
-        .bold()
-        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
-    )
-    .literal(styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))))
-    .invalid(
-      styling::Style::new()
-        .bold()
-        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
-    )
-    .error(
-      styling::Style::new()
-        .bold()
-        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
-    )
-    .valid(
-      styling::Style::new()
-        .bold()
-        .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
-    )
-    .placeholder(
-      styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::White))),
-    )
+  pub fn get_clap_styles() -> clap::builder::Styles {
+    clap::builder::Styles::styled()
+      .usage(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+      )
+      .header(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+      )
+      .literal(
+        styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
+      )
+      .invalid(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+      )
+      .error(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+      )
+      .valid(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
+      )
+      .placeholder(
+        styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::White))),
+      )
+  }
 }
 
 #[cfg(test)]
@@ -277,6 +283,28 @@ mod tests {
         }]
       })
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_call_caller_context() -> Result<()> {
+    let jslt: Jslt = r#"
+      def inner-function()
+        {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        }
+
+      inner-function()
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, BASIC_OUTPUT.deref());
 
     Ok(())
   }

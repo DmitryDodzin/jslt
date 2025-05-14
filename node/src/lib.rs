@@ -1,3 +1,7 @@
+//! This is a nodejs wrapper that exposes basic js functions to perform jslt transformations.
+
+#![deny(unused_crate_dependencies)]
+
 use std::sync::Arc;
 
 use jslt::Jslt;

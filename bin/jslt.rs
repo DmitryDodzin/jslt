@@ -1,16 +1,20 @@
 #![feature(try_blocks)]
 
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 
 use clap::Parser;
 use clio::{Input, Output};
 use jslt::Jslt;
 
 #[derive(Debug, Parser)]
-#[command(version, about, styles = jslt::_get_clap_styles())]
+#[command(version, about, styles = jslt::_binary::get_clap_styles())]
 struct Args {
   /// Jslt Schema
-  schema: String,
+  #[clap(conflicts_with = "schema_file")]
+  schema: Option<String>,
+
+  #[clap(long, short = 'f', conflicts_with = "schema")]
+  schema_file: Option<Input>,
 
   /// Use instead of input
   #[clap(long, conflicts_with = "input")]
@@ -37,7 +41,17 @@ fn main() {
   let mut args = Args::parse();
 
   let result: Result<(), Box<dyn std::error::Error>> = try {
-    let jslt: Jslt = args.schema.parse()?;
+    let schema = match (args.schema_file, args.schema) {
+      (None, Some(schema)) => schema,
+      (Some(mut schema_file), None) => {
+        let mut output = String::new();
+        schema_file.read_to_string(&mut output)?;
+        output
+      }
+      _ => unreachable!(),
+    };
+
+    let jslt: Jslt = schema.parse()?;
 
     if args.multiline {
       for line in BufReader::new(args.input).lines().take_while(Result::is_ok) {
