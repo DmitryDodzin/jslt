@@ -17,11 +17,6 @@ name = "jslt"
 path = "bin/jslt.rs"
 required-features = ["binary"]
 
-[[bin]]
-name = "jslt-fmt"
-path = "bin/jslt-fmt.rs"
-required-features = ["binary"]
-
 [dependencies]
 jslt-macro = { path = "./macro", version = "0.0.1" }
 

@@ -2,19 +2,27 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 
-use clap::Parser;
+use clap::{Args, Parser};
 use clio::{Input, Output};
 use jslt::Jslt;
 
-#[derive(Debug, Parser)]
-#[command(version, about, styles = jslt::_binary::get_clap_styles())]
-struct Args {
-  /// Jslt Schema
-  #[clap(conflicts_with = "schema_file")]
+#[derive(Args, Debug)]
+#[group(required = true, multiple = false)]
+struct SchemaOpts {
+  /// Jslt schema content
+  #[clap(long, short, conflicts_with = "schema_path")]
   schema: Option<String>,
 
+  /// Jslt schema file
   #[clap(long, short = 'f', conflicts_with = "schema")]
-  schema_file: Option<Input>,
+  schema_path: Option<Input>,
+}
+
+#[derive(Debug, Parser)]
+#[command(version, about, styles = jslt::_binary::get_clap_styles())]
+struct Opts {
+  #[clap(flatten)]
+  schema: SchemaOpts,
 
   /// Use instead of input
   #[clap(long, conflicts_with = "input")]
@@ -37,46 +45,52 @@ struct Args {
   output: Output,
 }
 
+impl SchemaOpts {
+  fn into_schema(self) -> std::io::Result<String> {
+    match (self.schema_path, self.schema) {
+      (Some(mut schema_path), None) => {
+        let mut output = String::new();
+        schema_path.read_to_string(&mut output)?;
+
+        Ok(output)
+      }
+      (None, Some(schema)) => Ok(schema),
+      _ => unreachable!(),
+    }
+  }
+}
+
 fn main() {
-  let mut args = Args::parse();
+  let mut opts = Opts::parse();
 
   let result: Result<(), Box<dyn std::error::Error>> = try {
-    let schema = match (args.schema_file, args.schema) {
-      (None, Some(schema)) => schema,
-      (Some(mut schema_file), None) => {
-        let mut output = String::new();
-        schema_file.read_to_string(&mut output)?;
-        output
-      }
-      _ => unreachable!(),
-    };
-
+    let schema = opts.schema.into_schema()?;
     let jslt: Jslt = schema.parse()?;
 
-    if args.multiline {
-      for line in BufReader::new(args.input).lines().take_while(Result::is_ok) {
+    if opts.multiline {
+      for line in BufReader::new(opts.input).lines().take_while(Result::is_ok) {
         let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
 
         let value = jslt.transform_value(&value)?;
 
-        if args.pretty {
-          writeln!(args.output, "{}", serde_json::to_string_pretty(&value)?)?;
+        if opts.pretty {
+          writeln!(opts.output, "{}", serde_json::to_string_pretty(&value)?)?;
         } else {
-          writeln!(args.output, "{value}")?;
+          writeln!(opts.output, "{value}")?;
         }
       }
     } else {
-      let value = match args.text {
+      let value = match opts.text {
         Some(text) => serde_json::from_str(&text)?,
-        None => serde_json::from_reader(args.input)?,
+        None => serde_json::from_reader(opts.input)?,
       };
 
       let value = jslt.transform_value(&value)?;
 
-      if args.pretty {
-        writeln!(args.output, "{}", serde_json::to_string_pretty(&value)?)?;
+      if opts.pretty {
+        writeln!(opts.output, "{}", serde_json::to_string_pretty(&value)?)?;
       } else {
-        writeln!(args.output, "{value}")?;
+        writeln!(opts.output, "{value}")?;
       }
     }
   };
