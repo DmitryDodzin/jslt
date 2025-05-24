@@ -54,23 +54,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Cli
 
-Test branch install
 ```bash
-cargo install --features binary --git https://github.com/DmitryDodzin/jslt.git --branch qol
+cargo install --features binary jslt
 
 # Optional to install with http client with (ureq/curl)
-cargo install --features binary  --features clio/http-ureq --git https://github.com/DmitryDodzin/jslt.git --branch qol
+cargo install --features binary --features clio/http-ureq jslt
 # or 
-cargo install --features binary --features clio/http-curl --git https://github.com/DmitryDodzin/jslt.git --branch qol
+cargo install --features binary --features clio/http-curl jslt
 ```
 
-Currently there are 2 binaries that ship with the libaray `jslt` and `jslt-fmt`.
+Now you have `jslt` binary and can it for simple cli transformations (*`jslt --help` for more cli docs*)
 
 ```bash
 echo '{"foo": "bar"}' | jslt '{ "foo_" + .foo : 2000 }'
 # {"foo_bar":2000}
 ```
-
 
 ## Status: POC
 
