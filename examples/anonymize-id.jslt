@@ -1,0 +1,15 @@
+def anonymize()
+  let idparts = split(.id, "-")
+  let xxx = [for ($idparts) "x" * size(.)]
+
+  {
+    "id" : join($xxx, "-"),
+    *: .
+  }
+
+def save-original()
+  {
+    "__original": .
+  }
+
+anonymize() + save-original()

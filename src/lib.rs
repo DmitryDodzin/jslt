@@ -1,5 +1,4 @@
 #![deny(unused_crate_dependencies)]
-#![feature(iter_intersperse)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
 use std::{borrow::Cow, fmt, str::FromStr};
@@ -152,6 +151,15 @@ mod tests {
     })
   });
 
+  static VALUE_WITH_ID: LazyLock<Value> = LazyLock::new(|| {
+    json!({
+     "id": uuid::Uuid::new_v4().to_string(),
+     "foo": {
+      "bar": 2000
+     }
+    })
+  });
+
   use super::*;
 
   #[test]
@@ -177,6 +185,26 @@ mod tests {
           [1, 2, 3, 4, 5],
           [6, 7, 8, 9, 10]
         ]
+      })
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn example_anonymize_id() -> Result<()> {
+    let jslt: Jslt = include_str!("../examples/anonymize-id.jslt").parse()?;
+
+    let output = jslt.transform_value(&VALUE_WITH_ID)?;
+
+    assert_eq!(
+      output,
+      json!({
+        "__original": *VALUE_WITH_ID,
+        "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "foo": {
+          "bar": 2000
+        }
       })
     );
 

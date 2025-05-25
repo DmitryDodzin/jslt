@@ -66,7 +66,7 @@ cargo install --features binary --features clio/http-curl jslt
 Now you have `jslt` binary and can it for simple cli transformations (*`jslt --help` for more cli docs*)
 
 ```bash
-echo '{"foo": "bar"}' | jslt '{ "foo_" + .foo : 2000 }'
+echo '{"foo": "bar"}' | jslt -s '{ "foo_" + .foo : 2000 }'
 # {"foo_bar":2000}
 ```
 

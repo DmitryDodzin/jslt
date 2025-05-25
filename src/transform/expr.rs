@@ -243,6 +243,11 @@ impl Transform for OperatorExprTransformer {
         ))),
       },
       OperatorTransformer::Mul => match (&left, &right) {
+        (Value::String(left), Value::Number(right)) if right.is_u64() => Ok(Value::String(
+          std::iter::from_fn(|| Some(left.clone()))
+            .take(right.as_u64().expect("Should be u64") as usize)
+            .collect(),
+        )),
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") * right.as_u64().expect("Should be u64")).into(),

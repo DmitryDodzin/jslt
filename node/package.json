@@ -18,7 +18,7 @@
     "test": "cargo test"
   },
   "dependencies": {
-    "detect-libc": "^2.0.3"
+    "detect-libc": "^2.0.4"
   },
   "devDependencies": {
     "cargo-cp-artifact": "^0.1.9"

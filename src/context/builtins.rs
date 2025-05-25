@@ -1,6 +1,7 @@
 use std::{
   collections::hash_map::DefaultHasher,
   hash::{Hash, Hasher},
+  iter::Peekable,
   time::{Duration, SystemTime},
 };
 
@@ -418,6 +419,56 @@ pub fn split(value: &Value, re: &Value) -> Result<Value> {
   }
 }
 
+struct JoinIterator<I: Iterator> {
+  iterator: Peekable<I>,
+  seperator: String,
+
+  next_is_seperator: bool,
+  finished: bool,
+}
+
+impl<I> JoinIterator<I>
+where
+  I: Iterator,
+{
+  fn new(iterator: Peekable<I>, seperator: String) -> Self {
+    JoinIterator {
+      iterator,
+      seperator,
+
+      next_is_seperator: false,
+      finished: false,
+    }
+  }
+}
+
+impl<I> Iterator for JoinIterator<I>
+where
+  I: Iterator<Item = String>,
+{
+  type Item = String;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    if self.finished {
+      return None;
+    }
+
+    if self.next_is_seperator {
+      self.next_is_seperator = false;
+
+      Some(self.seperator.clone())
+    } else {
+      self.next_is_seperator = true;
+
+      let next = self.iterator.next();
+
+      self.finished = self.iterator.peek().is_none();
+
+      next
+    }
+  }
+}
+
 #[static_function]
 pub fn join(array: &Value, separator: &Value) -> Result<Value> {
   match array {
@@ -428,17 +479,20 @@ pub fn join(array: &Value, separator: &Value) -> Result<Value> {
         .unwrap_or_else(|| separator.to_string());
 
       Ok(
-        items
-          .iter()
-          .map(|item| {
-            item
-              .as_str()
-              .map(str::to_owned)
-              .unwrap_or_else(|| item.to_string())
-          })
-          .intersperse(separator)
-          .collect::<String>()
-          .into(),
+        JoinIterator::new(
+          items
+            .iter()
+            .map(|item| {
+              item
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_else(|| item.to_string())
+            })
+            .peekable(),
+          separator,
+        )
+        .collect::<String>()
+        .into(),
       )
     }
     Value::Null => Ok(Value::Null),
