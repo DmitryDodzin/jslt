@@ -9,7 +9,7 @@ use crate::{
   error::{JsltError, Result},
   format,
   parser::{FromPairs, Rule},
-  transform::{expr::ExprTransformer, Transform},
+  transform::{Transform, expr::ExprTransformer},
 };
 
 #[derive(Debug)]

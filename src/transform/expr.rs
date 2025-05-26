@@ -5,13 +5,13 @@ use pest::iterators::{Pair, Pairs};
 use serde_json::Value;
 
 use crate::{
-  context::{builtins, Context, DynamicFunction, JsltFunction},
+  context::{Context, DynamicFunction, JsltFunction, builtins},
   error::{JsltError, Result},
   format,
   parser::{FromPairs, Rule},
   transform::{
-    value::{accessor::AccessorTransformer, ValueTransformer},
     Transform,
+    value::{ValueTransformer, accessor::AccessorTransformer},
   },
 };
 

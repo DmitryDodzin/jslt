@@ -10,9 +10,9 @@ use crate::{
   format,
   parser::{FromPairs, Rule},
   transform::{
+    Transform,
     expr::ExprTransformer,
     value::{accessor::AccessorTransformer, array::ArrayTransformer, object::ObjectTransformer},
-    Transform,
   },
 };
 

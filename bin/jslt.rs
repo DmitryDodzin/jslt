@@ -1,5 +1,3 @@
-#![feature(try_blocks)]
-
 use std::io::{BufRead, BufReader, Read, Write};
 
 use clap::{Args, Parser};
@@ -60,30 +58,13 @@ impl SchemaOpts {
   }
 }
 
-fn main() {
-  let mut opts = Opts::parse();
+fn entrypoint(mut opts: Opts) -> Result<(), Box<dyn std::error::Error>> {
+  let schema = opts.schema.into_schema()?;
+  let jslt: Jslt = schema.parse()?;
 
-  let result: Result<(), Box<dyn std::error::Error>> = try {
-    let schema = opts.schema.into_schema()?;
-    let jslt: Jslt = schema.parse()?;
-
-    if opts.multiline {
-      for line in BufReader::new(opts.input).lines().take_while(Result::is_ok) {
-        let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
-
-        let value = jslt.transform_value(&value)?;
-
-        if opts.pretty {
-          writeln!(opts.output, "{}", serde_json::to_string_pretty(&value)?)?;
-        } else {
-          writeln!(opts.output, "{value}")?;
-        }
-      }
-    } else {
-      let value = match opts.text {
-        Some(text) => serde_json::from_str(&text)?,
-        None => serde_json::from_reader(opts.input)?,
-      };
+  if opts.multiline {
+    for line in BufReader::new(opts.input).lines().take_while(Result::is_ok) {
+      let value = serde_json::from_str(&line.expect("line should be filtered to only success"))?;
 
       let value = jslt.transform_value(&value)?;
 
@@ -93,9 +74,28 @@ fn main() {
         writeln!(opts.output, "{value}")?;
       }
     }
-  };
+  } else {
+    let value = match opts.text {
+      Some(text) => serde_json::from_str(&text)?,
+      None => serde_json::from_reader(opts.input)?,
+    };
 
-  if let Err(err) = result {
+    let value = jslt.transform_value(&value)?;
+
+    if opts.pretty {
+      writeln!(opts.output, "{}", serde_json::to_string_pretty(&value)?)?;
+    } else {
+      writeln!(opts.output, "{value}")?;
+    }
+  }
+
+  Ok(())
+}
+
+fn main() {
+  let opts = Opts::parse();
+
+  if let Err(err) = entrypoint(opts) {
     eprintln!("{err}");
   }
 }

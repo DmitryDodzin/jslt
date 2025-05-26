@@ -5,13 +5,13 @@ use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
-  context::{builtins, Context},
+  context::{Context, builtins},
   error::Result,
   format,
   parser::{FromPairs, Rule},
   transform::{
-    expr::{ExprTransformer, ForTransformer},
     Transform,
+    expr::{ExprTransformer, ForTransformer},
   },
 };
 

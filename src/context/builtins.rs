@@ -8,7 +8,7 @@ use std::{
 use chrono::{DateTime, NaiveDateTime};
 use jslt_macro::static_function;
 use regex_lite::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use url::Url;
 use uuid::Uuid;
 

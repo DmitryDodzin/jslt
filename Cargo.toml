@@ -51,7 +51,7 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/DmitryDodzin/jslt.git"
 license = "MIT"
 

@@ -11,7 +11,7 @@ use crate::{
   context::JsltContext,
   error::{JsltError, Result},
   parser::{FromPairs, JsltGrammar, Rule},
-  transform::{expr::ExprTransformer, Transform},
+  transform::{Transform, expr::ExprTransformer},
 };
 
 pub mod context;
