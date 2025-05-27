@@ -20,6 +20,6 @@ jobs:
       run: pip install cargo-zigbuild
     - uses: Swatinem/rust-cache@v2
     - name: Build
-      run: cargo zigbuild --workspace --verbose
+      run: cargo zigbuild --workspace --all-features --verbose
     - name: Run tests
-      run: cargo test --workspace --verbose
+      run: cargo test --workspace --all-features --verbose

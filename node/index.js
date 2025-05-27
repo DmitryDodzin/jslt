@@ -4,7 +4,7 @@ const detectLibc = require('detect-libc');
 
 const runtimeLibc = () => 
   detectLibc.isNonGlibcLinuxSync()
-    ? detectLibc.familySync() : '';
+    ? detectLibc.familySync() ?? '' : '';
 
 try {
   jslt = require(`jslt-node-${process.platform}${runtimeLibc()}-${process.arch}/jslt.node`);

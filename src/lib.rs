@@ -1,7 +1,7 @@
-#![feature(iter_intersperse)]
+#![deny(unused_crate_dependencies)]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
-use std::{borrow::Cow, str::FromStr};
+use std::{borrow::Cow, fmt, str::FromStr};
 
 use pest::Parser;
 use serde::{Deserialize, Serialize};
@@ -11,12 +11,12 @@ use crate::{
   context::JsltContext,
   error::{JsltError, Result},
   parser::{FromPairs, JsltGrammar, Rule},
-  transform::{expr::ExprTransformer, Transform},
+  transform::{Transform, expr::ExprTransformer},
 };
 
 pub mod context;
 pub mod error;
-mod macros;
+pub mod format;
 pub mod parser;
 pub mod transform;
 
@@ -55,6 +55,60 @@ impl FromStr for Jslt {
     let context = JsltContext::default();
 
     Ok(Jslt { builder, context })
+  }
+}
+
+impl fmt::Display for Jslt {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", format::format(self))
+  }
+}
+
+impl format::Display for Jslt {
+  fn fmt(&self, f: &mut format::Formatter<'_>) -> fmt::Result {
+    format::Display::fmt(&self.builder, f)
+  }
+}
+
+#[doc(hidden)]
+#[cfg(feature = "binary")]
+pub mod _binary {
+  use clap::builder::styling;
+  use clio as _;
+
+  pub fn get_clap_styles() -> clap::builder::Styles {
+    clap::builder::Styles::styled()
+      .usage(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+      )
+      .header(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Yellow))),
+      )
+      .literal(
+        styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
+      )
+      .invalid(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+      )
+      .error(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Red))),
+      )
+      .valid(
+        styling::Style::new()
+          .bold()
+          .fg_color(Some(styling::Color::Ansi(styling::AnsiColor::Green))),
+      )
+      .placeholder(
+        styling::Style::new().fg_color(Some(styling::Color::Ansi(styling::AnsiColor::White))),
+      )
   }
 }
 
@@ -97,6 +151,15 @@ mod tests {
     })
   });
 
+  static VALUE_WITH_ID: LazyLock<Value> = LazyLock::new(|| {
+    json!({
+     "id": uuid::Uuid::new_v4().to_string(),
+     "foo": {
+      "bar": 2000
+     }
+    })
+  });
+
   use super::*;
 
   #[test]
@@ -122,6 +185,26 @@ mod tests {
           [1, 2, 3, 4, 5],
           [6, 7, 8, 9, 10]
         ]
+      })
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn example_anonymize_id() -> Result<()> {
+    let jslt: Jslt = include_str!("../examples/anonymize-id.jslt").parse()?;
+
+    let output = jslt.transform_value(&VALUE_WITH_ID)?;
+
+    assert_eq!(
+      output,
+      json!({
+        "__original": *VALUE_WITH_ID,
+        "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "foo": {
+          "bar": 2000
+        }
       })
     );
 
@@ -161,6 +244,27 @@ mod tests {
     let output = jslt.transform_value(&BASIC_INPUT)?;
 
     assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
+  #[test]
+  fn object_trailing_comma() -> Result<()> {
+    let jslt: Jslt = r#"
+      {
+        "data": {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        },
+      }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, serde_json::json!({ "data": *BASIC_OUTPUT }));
 
     Ok(())
   }
@@ -232,6 +336,49 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn array_trailing_comma() -> Result<()> {
+    let jslt: Jslt = r#"
+      [
+        {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        },
+      ]
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, serde_json::json!([*BASIC_OUTPUT]));
+
+    Ok(())
+  }
+
+  #[test]
+  fn function_call_caller_context() -> Result<()> {
+    let jslt: Jslt = r#"
+      def inner-function()
+        {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        }
+
+      inner-function()
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("null", "[1, 2, 3]", "false")]
   #[case("1", "[1, 2, 3]", "true")]
@@ -275,7 +422,7 @@ mod tests {
     let output = jslt.transform_value(&json!("foobar")).err();
 
     assert!(
-      matches!(output, Some(JsltError::Unknown(ref err)) if err == "foobar"),
+      matches!(output, Some(JsltError::RuntimeError(ref err)) if err == "foobar"),
       "Bad Err: {output:?}"
     );
 

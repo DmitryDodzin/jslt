@@ -52,6 +52,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Cli
+
+```bash
+cargo install --features binary jslt
+
+# Optional to install with http client with (ureq/curl)
+cargo install --features binary --features clio/http-ureq jslt
+# or 
+cargo install --features binary --features clio/http-curl jslt
+```
+
+Now you have `jslt` binary and can it for simple cli transformations (*`jslt --help` for more cli docs*)
+
+```bash
+echo '{"foo": "bar"}' | jslt -s '{ "foo_" + .foo : 2000 }'
+# {"foo_bar":2000}
+```
+
 ## Status: POC
 
 There is very minial support for selectors, constants and for loops and no garantee this will continue any further in the current phase.

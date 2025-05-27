@@ -1,4 +1,4 @@
-use neon::prelude::*;
+use neon::{prelude::*, types::buffer::TypedArray};
 use serde_json::Value as JsonValue;
 
 pub fn from_json_to_value<'c, C: Context<'c>>(
@@ -103,4 +103,27 @@ pub fn from_value_to_json<'c, C: Context<'c>>(
   }
 
   cx.throw_type_error(format!("Unable to convert value to json ({value:?})"))
+}
+
+pub fn from_string_or_buffer_to_json<'c, C: Context<'c>>(
+  cx: &mut C,
+  value: Handle<'c, JsValue>,
+) -> NeonResult<JsonValue> {
+  if value.is_a::<JsArrayBuffer, _>(cx) {
+    let input = value.downcast_or_throw::<JsArrayBuffer, _>(cx)?;
+
+    return serde_json::from_slice(input.as_slice(cx))
+      .or_else(|err| cx.throw_error(err.to_string()));
+  }
+
+  if value.is_a::<JsBuffer, _>(cx) {
+    let input = value.downcast_or_throw::<JsBuffer, _>(cx)?;
+
+    return serde_json::from_slice(input.as_slice(cx))
+      .or_else(|err| cx.throw_error(err.to_string()));
+  }
+
+  let input = value.downcast_or_throw::<JsString, _>(cx)?;
+
+  serde_json::from_str(&input.value(cx)).or_else(|err| cx.throw_error(err.to_string()))
 }

@@ -34,21 +34,22 @@ FromRangeAccessor = { Expr ~ ":" ~ Expr? }
 ToRangeAccessor = { Expr? ~ ":" ~ Expr }
 RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
 
-FunctionCall = { Ident ~ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" ~ Accessor? }
+FunctionCall = { Ident ~ FunctionCallArgs ~ Accessor? }
+FunctionCallArgs = { "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
 
 FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 
 Array    = {
     "[" ~ "]"
-  | "[" ~ (ArrayFor | Expr) ~ ("," ~ (ArrayFor | Expr))* ~ "]"
+  | "[" ~ (ArrayFor | Expr) ~ ("," ~ (ArrayFor | Expr))* ~ ","? ~ "]"
 }
 ArrayFor = {
     For ~ "(" ~ Expr ~ ")" ~ Expr ~ IfCondition?
 }
 
 Object    = {
-    "{" ~ "}"
-  | "{" ~ (ObjectFor | Pair) ~ ("," ~ (ObjectSpread | ObjectFor | Pair))* ~ "}"
+    "{" ~ ObjectSpread? ~ "}"
+  | "{" ~ (ObjectFor | Pair) ~ ("," ~ (ObjectSpread | ObjectFor | Pair))* ~ ","? ~ "}"
 }
 ObjectFor = {
     For ~ "(" ~ Expr ~ ")" ~ Pair ~ IfCondition?

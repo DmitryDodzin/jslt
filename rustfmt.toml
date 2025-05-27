@@ -1,8 +1,3 @@
-edition = "2021"
+edition = "2024"
 tab_spaces = 2
-group_imports = "StdExternalCrate"
-comment_width = 100
-wrap_comments = true
-format_code_in_doc_comments = true
-imports_granularity = "Crate"
 newline_style = "Unix"
