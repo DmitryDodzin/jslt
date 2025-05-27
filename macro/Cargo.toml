@@ -1,6 +1,6 @@
 [package]
 name = "jslt-macro"
-description = ""
+description = "macro crate for internal use of jslt"
 version = "0.0.1"
 edition.workspace = true
 repository.workspace = true
