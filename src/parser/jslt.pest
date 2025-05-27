@@ -41,7 +41,7 @@ FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr
 
 Array    = {
     "[" ~ "]"
-  | "[" ~ (ArrayFor | Expr) ~ ("," ~ (ArrayFor | Expr))* ~ "]"
+  | "[" ~ (ArrayFor | Expr) ~ ("," ~ (ArrayFor | Expr))* ~ ","? ~ "]"
 }
 ArrayFor = {
     For ~ "(" ~ Expr ~ ")" ~ Expr ~ IfCondition?
@@ -49,7 +49,7 @@ ArrayFor = {
 
 Object    = {
     "{" ~ ObjectSpread? ~ "}"
-  | "{" ~ (ObjectFor | Pair) ~ ("," ~ (ObjectSpread | ObjectFor | Pair))* ~ "}"
+  | "{" ~ (ObjectFor | Pair) ~ ("," ~ (ObjectSpread | ObjectFor | Pair))* ~ ","? ~ "}"
 }
 ObjectFor = {
     For ~ "(" ~ Expr ~ ")" ~ Pair ~ IfCondition?
