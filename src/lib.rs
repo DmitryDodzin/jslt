@@ -249,6 +249,27 @@ mod tests {
   }
 
   #[test]
+  fn object_trailing_comma() -> Result<()> {
+    let jslt: Jslt = r#"
+      {
+        "data": {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        },
+      }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, serde_json::json!({ "data": *BASIC_OUTPUT }));
+
+    Ok(())
+  }
+
+  #[test]
   fn nested_data() -> Result<()> {
     let jslt: Jslt = r#"
     {
@@ -311,6 +332,27 @@ mod tests {
         }]
       })
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn array_trailing_comma() -> Result<()> {
+    let jslt: Jslt = r#"
+      [
+        {
+          "result" : {
+            "Open" : .menu.popup.menuitem[0].onclick,
+            "Close" : .menu.popup.menuitem[1].onclick
+          }
+        },
+      ]
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(output, serde_json::json!([*BASIC_OUTPUT]));
 
     Ok(())
   }
