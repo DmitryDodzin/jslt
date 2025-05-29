@@ -385,6 +385,7 @@ mod tests {
   #[case("1.0", (1.0).into())]
   #[case("6.02e+5", (6.02e+5).into())]
   #[case("\"\"", Value::String("".into()))]
+  #[case("\" \"", Value::String(" ".into()))]
   #[case("\"foobar\"", Value::String("foobar".into()))]
   #[case("\"\\\\foobar\"", Value::String("\\foobar".into()))]
   #[case("\"\\u2705\"", Value::String("✅".into()))]
