@@ -288,18 +288,21 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn array_range() -> Result<()> {
-    let jslt: Jslt = r#"
-    {
-      "result" : .data[0][0:3]
-    }
-    "#
-    .parse()?;
+  #[rstest]
+  #[case("[0]", "[1, 2, 3, 4, 5]")]
+  #[case("[0][0:3]", "[1, 2, 3]")]
+  #[case("[0][2:3]", "[3]")]
+  #[case("[0][0: 3]", "[1, 2, 3]")]
+  #[case("[0][0 :3]", "[1, 2, 3]")]
+  #[case("[0][0 : 3]", "[1, 2, 3]")]
+  #[case("[0][2:]", "[3, 4, 5]")]
+  #[case("[0][:3]", "[1, 2, 3]")]
+  fn array_range(#[case] accessor: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = format!("{{ \"result\" : .data{accessor} }}").parse()?;
 
     let output = jslt.transform_value(&BASIC_INPUT)?;
 
-    assert_eq!(output, json!({ "result": [1, 2, 3] }));
+    assert_eq!(output, json!({ "result": expected }));
 
     Ok(())
   }
