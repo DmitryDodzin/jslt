@@ -1,11 +1,11 @@
-use std::{fmt, fmt::Write as _};
+use std::{borrow::Cow, fmt, fmt::Write as _};
 
 use jslt_macro::expect_inner;
 use pest::iterators::Pairs;
 use serde_json::Value;
 
 use crate::{
-  context::Context,
+  context::{Context, builtins},
   error::{JsltError, Result},
   format,
   parser::{FromPairs, Rule},
@@ -20,13 +20,69 @@ pub struct AccessorTransformer {
 }
 
 impl AccessorTransformer {
-  fn index_by_value<'i>(input: &'i Value, index: &Value) -> Result<&'i Value> {
-    match index {
-      Value::String(str_key) => Ok(&input[str_key]),
-      Value::Number(num_key) => num_key
+  fn index_by_range<'i>(
+    input: &'i Value,
+    from: Option<&Value>,
+    to: Option<&Value>,
+  ) -> Result<Cow<'i, Value>> {
+    let Some(length) = builtins::length_impl(input) else {
+      return Ok(Cow::Owned(Value::Null));
+    };
+
+    let from = match from {
+      None | Some(Value::Null) => 0,
+      Some(index) if index.is_u64() => index.as_u64().expect("should be u64") as usize,
+      Some(back_index) if back_index.is_i64() => {
+        length - back_index.as_i64().expect("should be i64").unsigned_abs() as usize
+      }
+      Some(value) => return Err(JsltError::RangeNotNumber(value.clone())),
+    }
+    .min(length);
+
+    let to = match to {
+      None | Some(Value::Null) => length,
+      Some(index) if index.is_u64() => index.as_u64().expect("should be u64") as usize,
+      Some(back_index) if back_index.is_i64() => {
+        length - back_index.as_i64().expect("should be i64").unsigned_abs() as usize
+      }
+      Some(value) => return Err(JsltError::RangeNotNumber(value.clone())),
+    }
+    .min(length);
+
+    Ok(match input {
+      Value::Array(array) => Cow::Owned(array[from..to].into()),
+      Value::String(string) => Cow::Owned(string[from..to].into()),
+      _ => unreachable!(),
+    })
+  }
+
+  fn index_by_value<'i>(input: &'i Value, index: &Value) -> Result<Cow<'i, Value>> {
+    let Some(length) = builtins::length_impl(input) else {
+      return Ok(Cow::Owned(Value::Null));
+    };
+
+    match (input, index) {
+      (Value::String(str_input), Value::Number(num_key)) => num_key
         .as_u64()
-        .map(|index| &input[index as usize])
+        .map(|index| {
+          str_input
+            .chars()
+            .nth(index as usize)
+            .map(|val| Cow::Owned(Value::String(val.into())))
+            .unwrap_or_default()
+        })
         .ok_or(JsltError::IndexOutOfRange),
+      (input, Value::String(str_key)) => Ok(Cow::Borrowed(&input[str_key])),
+      (input, Value::Number(num_key)) if num_key.is_u64() => {
+        let index = num_key.as_u64().expect("should be u64") as usize;
+        Ok(Cow::Borrowed(&input[index]))
+      }
+      (input, Value::Number(num_key)) if num_key.is_i64() => {
+        let index =
+          (length - num_key.as_i64().expect("should be i64").unsigned_abs() as usize).min(length);
+
+        Ok(Cow::Borrowed(&input[index]))
+      }
       _ => Err(JsltError::IndexOutOfRange),
     }
   }
@@ -74,43 +130,40 @@ impl Transform for AccessorTransformer {
 
     for key in &self.keys {
       let next_value = match key {
-        KeyAccessorTransformer::Index(index) => AccessorTransformer::index_by_value(
-          value,
-          &index.transform_value(context.clone(), input)?,
-        )?,
+        KeyAccessorTransformer::Index(index) => {
+          let result = AccessorTransformer::index_by_value(
+            value,
+            &index.transform_value(context.clone(), input)?,
+          )?;
+
+          match result {
+            Cow::Borrowed(value) => value,
+            Cow::Owned(owned) => {
+              temp_value_store.replace(owned);
+              temp_value_store.as_ref().unwrap()
+            }
+          }
+        }
         KeyAccessorTransformer::Range { from, to } => {
           let from = from
             .as_ref()
-            .map(|value| {
-              let value = value.transform_value(context.clone(), input)?;
-
-              value.as_u64().ok_or(JsltError::RangeNotNumber(value))
-            })
-            .transpose()?
-            .unwrap_or(0);
+            .map(|value| value.transform_value(context.clone(), input))
+            .transpose()?;
 
           let to = to
             .as_ref()
-            .map(|value| {
-              let value = value.transform_value(context.clone(), input)?;
+            .map(|value| value.transform_value(context.clone(), input))
+            .transpose()?;
 
-              value.as_u64().ok_or(JsltError::RangeNotNumber(value))
-            })
-            .transpose()?
-            .unwrap_or_else(|| {
-              value
-                .as_array()
-                .and_then(|array| array.len().try_into().ok())
-                .unwrap_or(0)
-            });
+          let result = AccessorTransformer::index_by_range(value, from.as_ref(), to.as_ref())?;
 
-          temp_value_store.replace(Value::Array(
-            (from..to)
-              .map(|index| value[index as usize].clone())
-              .collect::<Vec<_>>(),
-          ));
-
-          temp_value_store.as_ref().unwrap()
+          match result {
+            Cow::Borrowed(value) => value,
+            Cow::Owned(owned) => {
+              temp_value_store.replace(owned);
+              temp_value_store.as_ref().unwrap()
+            }
+          }
         }
       };
 

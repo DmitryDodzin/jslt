@@ -38,16 +38,24 @@ pub fn contains(element: &Value, sequence: &Value) -> Result<Value> {
   }
 }
 
+pub fn length_impl(input: &Value) -> Option<usize> {
+  match input {
+    Value::Array(array) => Some(array.len()),
+    Value::Object(object) => Some(object.len()),
+    Value::String(string) => Some(string.len()),
+    _ => None,
+  }
+}
+
 #[static_function]
 pub fn size(input: &Value) -> Result<Value> {
   match input {
-    Value::Array(array) => Ok(array.len().into()),
-    Value::Object(object) => Ok(object.len().into()),
-    Value::String(string) => Ok(string.len().into()),
     Value::Null => Ok(Value::Null),
-    _ => Err(JsltError::InvalidInput(format!(
-      "Arguments must be array | object | string (got {input})"
-    ))),
+    _ => length_impl(input).map(Value::from).ok_or_else(|| {
+      JsltError::InvalidInput(format!(
+        "Arguments must be array | object | string (got {input})"
+      ))
+    }),
   }
 }
 
@@ -667,6 +675,7 @@ pub fn get_key(object: &Value, key: &Value, fallback: Option<&Value>) -> Result<
       (Some(value), _) => Ok(value.clone()),
       (None, None) => Ok(Value::Null),
     },
+    (Value::Null, _) => Ok(fallback.map(Value::clone).unwrap_or_default()),
     _ => Err(JsltError::InvalidInput(
       "Input of get-key must be object with string key".to_string(),
     )),
