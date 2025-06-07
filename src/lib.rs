@@ -288,6 +288,25 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn quoted_string_accessor() -> Result<()> {
+    let jslt: Jslt = r#"
+    {
+      "result" : {
+        "Open" : ."menu"."popup"."menuitem"[0]."onclick",
+        "Close" : ."menu"."popup"."menuitem"[1]."onclick"
+      }
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("[0]", "[1, 2, 3, 4, 5]")]
   #[case("[0][0:3]", "[1, 2, 3]")]
@@ -297,6 +316,9 @@ mod tests {
   #[case("[0][0 : 3]", "[1, 2, 3]")]
   #[case("[0][2:]", "[3, 4, 5]")]
   #[case("[0][:3]", "[1, 2, 3]")]
+  #[case("[0][-3:]", "[3, 4, 5]")]
+  #[case("[0][:-2]", "[1, 2, 3]")]
+  #[case("[0][-4:-2]", "[2, 3]")]
   fn array_range(#[case] accessor: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = format!("{{ \"result\" : .data{accessor} }}").parse()?;
 
