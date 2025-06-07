@@ -307,6 +307,20 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn inline_if() -> Result<()> {
+    let jslt: Jslt = r#"
+      "foobar" + if (false) 3000 else 2000
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, "foobar2000");
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("[0]", "[1, 2, 3, 4, 5]")]
   #[case("[0][0:3]", "[1, 2, 3]")]
@@ -1207,12 +1221,59 @@ mod tests {
   #[case("1 < 3 and 4 * 2 > 5", "true")]
   #[case("1 <= 3 and 4 * 2 <= 8", "true")]
   #[case("[for ([1, 2, 3]) . if ( . > 2 )]", "[3]")]
+  #[case::null_add_string("null + \"-foobar\"", "\"null-foobar\"")]
+  #[case::string_add_null("\"foobar-\" + null", "\"foobar-null\"")]
+  #[case::null_add_array("null + [1, 2, 3]", "[1, 2, 3]")]
+  #[case::array_add_null("[1, 2, 3] + null", "[1, 2, 3]")]
+  #[case::null_add_object("null + { \"foo\": \"bar\" }", "{ \"foo\": \"bar\" }")]
+  #[case::object_add_null("{ \"foo\": \"bar\" } + null", "{ \"foo\": \"bar\" }")]
   fn operators(#[case] jslt: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = jslt.parse()?;
 
     let output = jslt.transform_value(&Value::Null)?;
 
     assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::null_add_null("null + null")]
+  #[case::null_add_number("null + 1")]
+  #[case::number_add_null("1 + null")]
+  #[case::null_sub_null("null - null")]
+  #[case::null_sub_number(r#"null - 1"#)]
+  #[case::number_sub_null(r#"1 - null"#)]
+  #[case::null_sub_string(r#"null - "-foobar""#)]
+  #[case::string_sub_null(r#""foobar-" - null"#)]
+  #[case::null_sub_array(r#"null - [1, 2, 3]"#)]
+  #[case::array_sub_null(r#"[1, 2, 3] - null"#)]
+  #[case::null_sub_object(r#"null - { "foo": "bar" }"#)]
+  #[case::object_sub_null(r#"{ "foo": "bar" } - null"#)]
+  #[case::null_mul_null("null * null")]
+  #[case::null_mul_number(r#"null * 1"#)]
+  #[case::number_mul_null(r#"1 * null"#)]
+  #[case::null_mul_string(r#"null * "-foobar""#)]
+  #[case::string_mul_null(r#""foobar-" * null"#)]
+  #[case::null_mul_array(r#"null * [1, 2, 3]"#)]
+  #[case::array_mul_null(r#"[1, 2, 3] * null"#)]
+  #[case::null_mul_object(r#"null * { "foo": "bar" }"#)]
+  #[case::object_mul_null(r#"{ "foo": "bar" } * null"#)]
+  #[case::null_div_null("null / null")]
+  #[case::null_div_number(r#"null / 1"#)]
+  #[case::number_div_null(r#"1 / null"#)]
+  #[case::null_div_string(r#"null / "-foobar""#)]
+  #[case::string_div_null(r#""foobar-" / null"#)]
+  #[case::null_div_array(r#"null / [1, 2, 3]"#)]
+  #[case::array_div_null(r#"[1, 2, 3] / null"#)]
+  #[case::null_div_object(r#"null / { "foo": "bar" }"#)]
+  #[case::object_div_null(r#"{ "foo": "bar" } / null"#)]
+  fn operators_with_null_resulting_in_null(#[case] jslt: &str) -> Result<()> {
+    let jslt: Jslt = jslt.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, Value::Null);
 
     Ok(())
   }
