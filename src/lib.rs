@@ -382,6 +382,29 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn string_index() -> Result<()> {
+    let jslt: Jslt = ".[3]".parse()?;
+
+    let output = jslt.transform_value(&serde_json::json!("foobar"))?;
+    assert_eq!(output, serde_json::json!("b"));
+
+    let output = jslt.transform_value(&serde_json::json!("foo"))?;
+    assert_eq!(output, serde_json::json!(null));
+
+    Ok(())
+  }
+
+  #[test]
+  fn string_range_index() -> Result<()> {
+    let jslt: Jslt = ".[3:6]".parse()?;
+
+    let output = jslt.transform_value(&serde_json::json!("foobar"))?;
+    assert_eq!(output, serde_json::json!("bar"));
+
+    Ok(())
+  }
+
   #[rstest]
   #[case("1", (1).into())]
   #[case("-1", (-1).into())]
