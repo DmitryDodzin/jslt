@@ -230,9 +230,6 @@ impl FromPairs for KeyAccessorTransformer {
     let inner = pairs.peek().ok_or(JsltError::UnexpectedEnd)?;
 
     match inner.as_rule() {
-      Rule::Number | Rule::String | Rule::Variable => Ok(KeyAccessorTransformer::Index(
-        ExprTransformer::from_pairs(pairs)?,
-      )),
       Rule::RangeAccessor => {
         let mut inner = pairs.next().expect("Sould be fine").into_inner();
 
@@ -270,7 +267,9 @@ impl FromPairs for KeyAccessorTransformer {
           _ => Err(JsltError::UnexpectedContent(Rule::RangeAccessor)),
         }
       }
-      _ => Err(JsltError::UnexpectedContent(Rule::KeyAccessor)),
+      _ => Ok(KeyAccessorTransformer::Index(ExprTransformer::from_pairs(
+        pairs,
+      )?)),
     }
   }
 }
