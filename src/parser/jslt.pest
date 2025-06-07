@@ -29,7 +29,7 @@ Scope = { "(" ~ Expr ~ ")" }
 Accessor = ${
     (("." ~ Ident?) | KeyAccessor) ~ Accessor?
 }
-KeyAccessor = { "[" ~ (RangeAccessor | Expr) ~ "]" }
+KeyAccessor = !{ "[" ~ (RangeAccessor | Expr) ~ "]" }
 FromRangeAccessor = { Expr ~ ":" ~ Expr? }
 ToRangeAccessor = { Expr? ~ ":" ~ Expr }
 RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
