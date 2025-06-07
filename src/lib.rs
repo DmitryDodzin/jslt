@@ -383,6 +383,26 @@ mod tests {
   }
 
   #[rstest]
+  #[case("1", (1).into())]
+  #[case("-1", (-1).into())]
+  #[case("1.0", (1.0).into())]
+  #[case("6.02e+5", (6.02e+5).into())]
+  #[case("\"\"", Value::String("".into()))]
+  #[case("\" \"", Value::String(" ".into()))]
+  #[case("\"foobar\"", Value::String("foobar".into()))]
+  #[case("\"\\\\foobar\"", Value::String("\\foobar".into()))]
+  #[case("\"\\u2705\"", Value::String("✅".into()))]
+  fn parse_literals(#[case] query: &str, #[case] expected: Value) -> Result<()> {
+    let jslt: Jslt = query.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, expected);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case("null", "[1, 2, 3]", "false")]
   #[case("1", "[1, 2, 3]", "true")]
   #[case("0", "[1, 2, 3]", "false")]
