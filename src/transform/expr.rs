@@ -196,6 +196,11 @@ impl Transform for OperatorExprTransformer {
 
     match self.operator {
       OperatorTransformer::Add => match (&left, &right) {
+        (Value::Null, Value::Number(_))
+        | (Value::Number(_), Value::Null)
+        | (Value::Null, Value::Null) => Ok(Value::Null),
+        (Value::Array(_) | Value::Object(_), Value::Null) => Ok(left),
+        (Value::Null, Value::Array(_) | Value::Object(_)) => Ok(right),
         (Value::Array(left), Value::Array(right)) => Ok(Value::Array(
           left.clone().into_iter().chain(right.clone()).collect(),
         )),
@@ -213,6 +218,8 @@ impl Transform for OperatorExprTransformer {
           (left.as_f64().expect("Should be f64") + right.as_f64().expect("Should be f64")).into(),
         ),
         (Value::String(left), Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
+        (left, Value::String(right)) => Ok(Value::String(format!("{left}{right}"))),
+        (Value::String(left), right) => Ok(Value::String(format!("{left}{right}"))),
         (Value::Object(left), Value::Object(right)) => Ok(Value::Object(
           left
             .into_iter()
@@ -225,6 +232,7 @@ impl Transform for OperatorExprTransformer {
         ))),
       },
       OperatorTransformer::Sub => match (&left, &right) {
+        (Value::Null, _) | (_, Value::Null) => Ok(Value::Null),
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") - right.as_u64().expect("Should be u64")).into(),
@@ -243,6 +251,7 @@ impl Transform for OperatorExprTransformer {
         ))),
       },
       OperatorTransformer::Mul => match (&left, &right) {
+        (Value::Null, _) | (_, Value::Null) => Ok(Value::Null),
         (Value::String(left), Value::Number(right)) if right.is_u64() => Ok(Value::String(
           std::iter::from_fn(|| Some(left.clone()))
             .take(right.as_u64().expect("Should be u64") as usize)
@@ -266,6 +275,7 @@ impl Transform for OperatorExprTransformer {
         ))),
       },
       OperatorTransformer::Div => match (&left, &right) {
+        (Value::Null, _) | (_, Value::Null) => Ok(Value::Null),
         (Value::Number(left), Value::Number(right)) if left.is_u64() && right.is_u64() => {
           Ok(Value::Number(
             (left.as_u64().expect("Should be u64") / right.as_u64().expect("Should be u64")).into(),

@@ -10,16 +10,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test:
+    name: cargo test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup Rust
-      run: rustup toolchain install nightly --profile minimal
-    - name: Setup ZigBuild
-      run: pip install cargo-zigbuild
-    - uses: Swatinem/rust-cache@v2
-    - name: Build
-      run: cargo zigbuild --workspace --all-features --verbose
+    - uses: actions/checkout@v4
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
     - name: Run tests
       run: cargo test --workspace --all-features --verbose
+
+  formatting:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+      - name: Rustfmt Check
+        uses: actions-rust-lang/rustfmt@v1

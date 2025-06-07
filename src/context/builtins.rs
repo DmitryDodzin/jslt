@@ -670,12 +670,12 @@ pub fn is_object(maybe_object: &Value) -> Result<Value> {
 #[static_function]
 pub fn get_key(object: &Value, key: &Value, fallback: Option<&Value>) -> Result<Value> {
   match (object, key) {
+    (Value::Null, _) | (_, Value::Null) => Ok(fallback.map(Value::clone).unwrap_or_default()),
     (Value::Object(map), Value::String(key)) => match (map.get(key), fallback) {
       (Some(Value::Null) | None, Some(fallback)) => Ok(fallback.clone()),
       (Some(value), _) => Ok(value.clone()),
       (None, None) => Ok(Value::Null),
     },
-    (Value::Null, _) => Ok(fallback.map(Value::clone).unwrap_or_default()),
     _ => Err(JsltError::InvalidInput(
       "Input of get-key must be object with string key".to_string(),
     )),

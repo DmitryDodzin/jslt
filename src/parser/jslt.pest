@@ -2,8 +2,9 @@ Jslt = _{ SOI ~ Expr ~ EOI }
 
 Value = _{ Array | Object | Number | String | Boolean | Null | FunctionCall | Accessor | Scope | Variable }
 
-Expr = _{ OperatorExpr | VariableDef | FunctionDef | IfStatement | Value }
-OperatorExpr = { Value ~ (Operator ~ Value)+ }
+Expr = _{ OperatorExpr | ValueExpr }
+ValueExpr = _{ VariableDef | FunctionDef | IfStatement | Value }
+OperatorExpr = { ValueExpr ~ (Operator ~ ValueExpr)+ }
 
 Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
 
@@ -27,7 +28,7 @@ Let = _{ "let" }
 Scope = { "(" ~ Expr ~ ")" }
 
 Accessor = ${
-    (("." ~ Ident?) | KeyAccessor) ~ Accessor?
+    (("." ~ (Ident | String)?) | KeyAccessor) ~ Accessor?
 }
 KeyAccessor = !{ "[" ~ (RangeAccessor | Expr) ~ "]" }
 FromRangeAccessor = { Expr ~ ":" ~ Expr? }
