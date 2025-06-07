@@ -1,17 +1,18 @@
 [package]
 name = "jslt-node"
 description = "NodeJS bindings for jslt"
-version = "0.0.4"
+version = "0.0.5"
 edition.workspace = true
 repository.workspace = true
 license.workspace = true
 exclude = ["bin/*.node"]
+publish = false
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-jslt = { path = "..", version = "0.0.4" }
+jslt = { path = "..", version = "0.0.5" }
 
 neon = { version = "1.1.1", default-features = false, features = ["napi-8"] }
 serde_json = "1"
