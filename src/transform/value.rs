@@ -153,7 +153,9 @@ impl FromPairs for StringTransformer {
     let rule = inner.as_rule();
 
     if matches!(rule, Rule::Inner) {
-      Ok(StringTransformer(inner.as_str().to_owned()))
+      Ok(StringTransformer(
+        unescape::unescape(inner.as_str()).unwrap_or_default(),
+      ))
     } else {
       Err(JsltError::UnexpectedInput(
         Rule::String,
