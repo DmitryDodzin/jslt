@@ -28,7 +28,7 @@ Let = _{ "let" }
 Scope = { "(" ~ Expr ~ ")" }
 
 Accessor = ${
-    (("." ~ Ident?) | KeyAccessor) ~ Accessor?
+    (("." ~ (Ident | String)?) | KeyAccessor) ~ Accessor?
 }
 KeyAccessor = !{ "[" ~ (RangeAccessor | Expr) ~ "]" }
 FromRangeAccessor = { Expr ~ ":" ~ Expr? }

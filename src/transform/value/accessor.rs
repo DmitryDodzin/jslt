@@ -99,6 +99,7 @@ impl FromPairs for AccessorTransformer {
     for pair in pairs {
       match pair.as_rule() {
         Rule::Ident => ident = Some(pair.as_str()),
+        Rule::String => ident = Some(pair.into_inner().as_str()),
         Rule::KeyAccessor => keys.push(KeyAccessorTransformer::from_pairs(&mut pair.into_inner())?),
         Rule::Accessor => {
           nested = Some(Box::new(AccessorTransformer::from_pairs(
