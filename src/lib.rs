@@ -1279,6 +1279,15 @@ mod tests {
   }
 
   #[rstest]
+  #[case(
+    "def definition() { \"foo\": \"bar\" } definition()",
+    "{ \"foo\": \"bar\" }"
+  )]
+  #[case(
+    "def letter() let message = \"foo\" { \"text\": $message } letter()",
+    "{ \"text\": \"foo\" }"
+  )]
+  #[case("def nuller() null nuller()", "null")]
   #[case("def my_add(a, b)\n $a + $b \n my_add(1, 2)", "3")]
   #[case("def my_add(a, b)\n let foo = $a \n $foo + $b \n my_add(1, 2)", "3")]
   #[case(
