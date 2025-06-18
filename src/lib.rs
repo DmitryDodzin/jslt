@@ -234,10 +234,10 @@ mod tests {
   fn pipe_operator() -> Result<()> {
     let jslt: Jslt = r#"
     .menu.popup.menuitem | {
-      "result" : {
-        "Open" : .[0].onclick,
-        "Close" : .[1].onclick
-      }
+      "Open" : .[0].onclick,
+      "Close" : .[1].onclick
+    } | {
+      "result" : .
     }
     "#
     .parse()?;
