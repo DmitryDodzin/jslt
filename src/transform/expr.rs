@@ -92,6 +92,7 @@ pub enum OperatorTransformer {
   Lte,
   Equal,
   NotEqual,
+  Pipe,
 }
 
 impl fmt::Display for OperatorTransformer {
@@ -109,6 +110,7 @@ impl fmt::Display for OperatorTransformer {
       OperatorTransformer::Lte => f.write_str("<="),
       OperatorTransformer::Equal => f.write_str("=="),
       OperatorTransformer::NotEqual => f.write_str("!="),
+      OperatorTransformer::Pipe => f.write_str("|"),
     }
   }
 }
@@ -172,6 +174,7 @@ impl OperatorExprTransformer {
     impl_operator_parse!(pairs, Sub);
     impl_operator_parse!(pairs, Mul);
     impl_operator_parse!(pairs, Div);
+    impl_operator_parse!(pairs, Pipe);
 
     Err(JsltError::InvalidInput(format!(
       "Could not evaluate the expession {pairs:#?}",
@@ -192,6 +195,11 @@ impl Transform for OperatorExprTransformer {
     let left = self
       .lhs
       .transform_value(Context::Borrowed(&context), input)?;
+
+    if matches!(self.operator, OperatorTransformer::Pipe) {
+      return self.rhs.transform_value(context, &left);
+    }
+
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
@@ -386,6 +394,7 @@ impl Transform for OperatorExprTransformer {
       },
       OperatorTransformer::Equal => Ok(Value::Bool(left == right)),
       OperatorTransformer::NotEqual => Ok(Value::Bool(left != right)),
+      OperatorTransformer::Pipe => unreachable!(),
     }
   }
 }
