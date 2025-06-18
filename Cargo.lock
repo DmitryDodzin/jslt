@@ -639,7 +639,7 @@ dependencies = [
  "serde_json",
  "sha256",
  "thiserror",
- "unescape",
+ "unescaper",
  "url",
  "uuid",
 ]
@@ -1260,10 +1260,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2896d95c02a80c6d6a5d6e953d479f5ddf2dfdb6a244441010e373ac0fb88971"
 
 [[package]]
-name = "unescape"
-version = "0.1.0"
+name = "unescaper"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb97dac3243214f8d8507998906ca3e2e0b900bf9bf4870477f125b82e68f6e"
+checksum = "c01d12e3a56a4432a8b436f293c25f4808bdf9e9f9f98f9260bba1f1bc5a1f26"
+dependencies = [
+ "thiserror",
+]
 
 [[package]]
 name = "unicase"
