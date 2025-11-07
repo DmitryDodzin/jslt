@@ -470,6 +470,7 @@ mod tests {
   #[case("\"foobar\"", Value::String("foobar".into()))]
   #[case("\"\\\\foobar\"", Value::String("\\foobar".into()))]
   #[case("\"\\u2705\"", Value::String("✅".into()))]
+  #[case("[null, 2, 3]", "[null, 2, 3]")]
   fn parse_literals(#[case] query: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = query.parse()?;
 
@@ -1233,6 +1234,10 @@ mod tests {
   #[case("1 + 2 / 2 + 1", "3")]
   #[case("3.12 * 2", "6.24")]
   #[case("\"3.12\" + \".2\"", "\"3.12.2\"")]
+  #[case("22 - 18", "4")]
+  #[case("22 - 18 - 1", "3")]
+  #[case("16 / 2", "8")]
+  #[case("16 / 2 / 2", "4")]
   #[case("true and true", "true")]
   #[case("true or false", "true")]
   #[case("false or false", "false")]
@@ -1298,6 +1303,15 @@ mod tests {
   }
 
   #[rstest]
+  #[case(
+    "def definition() { \"foo\": \"bar\" } definition()",
+    "{ \"foo\": \"bar\" }"
+  )]
+  #[case(
+    "def letter() let message = \"foo\" { \"text\": $message } letter()",
+    "{ \"text\": \"foo\" }"
+  )]
+  #[case("def nuller() null nuller()", "null")]
   #[case("def my_add(a, b)\n $a + $b \n my_add(1, 2)", "3")]
   #[case("def my_add(a, b)\n let foo = $a \n $foo + $b \n my_add(1, 2)", "3")]
   #[case(
