@@ -122,11 +122,20 @@ pub struct OperatorExprTransformer {
 
 macro_rules! impl_operator_parse {
   ($ident:ident, $op:ident) => {
-    if let Some((index, _)) = $ident
-      .iter()
-      .enumerate()
-      .find(|(_, pair)| matches!(pair.as_rule(), Rule::$op))
-    {
+    impl_operator_parse!($ident, $op, false)
+  };
+  ($ident:ident, $op:ident, $invert:literal) => {
+    let found_rule = {
+      let matcher = |(_, pair): &(_, &Pair<Rule>)| matches!(pair.as_rule(), Rule::$op);
+
+      if $invert {
+        $ident.iter().enumerate().rev().find(matcher)
+      } else {
+        $ident.iter().enumerate().find(matcher)
+      }
+    };
+
+    if let Some((index, _)) = found_rule {
       let mut right = $ident.split_off(index).split_off(1);
 
       let lhs = if $ident.len() == 1 {
@@ -168,10 +177,11 @@ impl OperatorExprTransformer {
     impl_operator_parse!(pairs, Lte);
     impl_operator_parse!(pairs, Equal);
     impl_operator_parse!(pairs, NotEqual);
-    impl_operator_parse!(pairs, Add);
-    impl_operator_parse!(pairs, Sub);
+
     impl_operator_parse!(pairs, Mul);
-    impl_operator_parse!(pairs, Div);
+    impl_operator_parse!(pairs, Add);
+    impl_operator_parse!(pairs, Div, true);
+    impl_operator_parse!(pairs, Sub, true);
 
     Err(JsltError::InvalidInput(format!(
       "Could not evaluate the expession {pairs:#?}",
