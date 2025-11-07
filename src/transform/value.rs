@@ -199,12 +199,15 @@ impl FromPairs for ValueTransformer {
         Rule::Accessor => AccessorTransformer::from_pairs(pairs).map(ValueTransformer::Accessor),
         Rule::Array => ArrayTransformer::from_pairs(pairs).map(ValueTransformer::Array),
         Rule::Boolean => BooleanTransformer::from_pairs(pairs).map(ValueTransformer::Boolean),
-        Rule::Null => Ok(ValueTransformer::Null(NullTransformer)),
         Rule::Number => NumberTransformer::from_pairs(pairs).map(ValueTransformer::Number),
         Rule::Object => ObjectTransformer::from_pairs(pairs).map(ValueTransformer::Object),
         Rule::Scope => ScopeTransformer::from_pairs(pairs).map(ValueTransformer::Scope),
         Rule::String => StringTransformer::from_pairs(pairs).map(ValueTransformer::String),
         Rule::Variable => VariableTransformer::from_pairs(pairs).map(ValueTransformer::Variable),
+        Rule::Null => {
+          let _ = pairs.next();
+          Ok(ValueTransformer::Null(NullTransformer))
+        }
         rule => Err(JsltError::UnexpectedInput(
           Rule::Value,
           rule,

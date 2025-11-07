@@ -451,6 +451,7 @@ mod tests {
   #[case("\"foobar\"", Value::String("foobar".into()))]
   #[case("\"\\\\foobar\"", Value::String("\\foobar".into()))]
   #[case("\"\\u2705\"", Value::String("✅".into()))]
+  #[case("[null, 2, 3]", "[null, 2, 3]")]
   fn parse_literals(#[case] query: &str, #[case] expected: Value) -> Result<()> {
     let jslt: Jslt = query.parse()?;
 
