@@ -1,12 +1,12 @@
 Jslt = _{ SOI ~ Expr ~ EOI }
 
-Value = _{ Array | Object | Number | String | Boolean | Null | FunctionCall | Accessor | Scope | Variable }
+Value = _{ FunctionCall | Accessor | Scope | Variable | Array | Object | Number | String | Boolean | Null }
 
 Expr = _{ OperatorExpr | ValueExpr }
 ValueExpr = _{ VariableDef | FunctionDef | IfStatement | Value }
 OperatorExpr = { ValueExpr ~ (Operator ~ ValueExpr)+ }
 
-Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
+Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual | Pipe }
 
 Add = { "+" }
 Sub = { "-" }
@@ -20,10 +20,11 @@ Equal = { "==" }
 NotEqual = { "!=" }
 And = { "and" }
 Or = { "or" }
+Pipe = { "|" }
 If = _{ "if" }
 For = _{ "for" }
-Def = _{ "def" }
-Let = _{ "let" }
+Def = _{ "def " }
+Let = _{ "let " }
 
 Scope = { "(" ~ Expr ~ ")" }
 
@@ -35,8 +36,8 @@ FromRangeAccessor = { Expr ~ ":" ~ Expr? }
 ToRangeAccessor = { Expr? ~ ":" ~ Expr }
 RangeAccessor = { FromRangeAccessor | ToRangeAccessor }
 
-FunctionCall = { Ident ~ FunctionCallArgs ~ Accessor? }
-FunctionCallArgs = { "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
+FunctionCall = ${ Ident ~ FunctionCallArgs ~ Accessor? }
+FunctionCallArgs = !{ "(" ~ Expr? ~ ("," ~ Expr)* ~ ")" }
 
 FunctionDef = { Def ~ Ident ~ "("  ~ Ident? ~ ("," ~ Ident)* ~ ")" ~ Expr ~ Expr? }
 

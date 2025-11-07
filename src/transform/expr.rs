@@ -92,6 +92,7 @@ pub enum OperatorTransformer {
   Lte,
   Equal,
   NotEqual,
+  Pipe,
 }
 
 impl fmt::Display for OperatorTransformer {
@@ -109,6 +110,7 @@ impl fmt::Display for OperatorTransformer {
       OperatorTransformer::Lte => f.write_str("<="),
       OperatorTransformer::Equal => f.write_str("=="),
       OperatorTransformer::NotEqual => f.write_str("!="),
+      OperatorTransformer::Pipe => f.write_str("|"),
     }
   }
 }
@@ -122,11 +124,20 @@ pub struct OperatorExprTransformer {
 
 macro_rules! impl_operator_parse {
   ($ident:ident, $op:ident) => {
-    if let Some((index, _)) = $ident
-      .iter()
-      .enumerate()
-      .find(|(_, pair)| matches!(pair.as_rule(), Rule::$op))
-    {
+    impl_operator_parse!($ident, $op, false)
+  };
+  ($ident:ident, $op:ident, $invert:literal) => {
+    let found_rule = {
+      let matcher = |(_, pair): &(_, &Pair<Rule>)| matches!(pair.as_rule(), Rule::$op);
+
+      if $invert {
+        $ident.iter().enumerate().rev().find(matcher)
+      } else {
+        $ident.iter().enumerate().find(matcher)
+      }
+    };
+
+    if let Some((index, _)) = found_rule {
       let mut right = $ident.split_off(index).split_off(1);
 
       let lhs = if $ident.len() == 1 {
@@ -160,6 +171,8 @@ macro_rules! impl_operator_parse {
 
 impl OperatorExprTransformer {
   pub fn from_inner_vec(mut pairs: Vec<Pair<Rule>>) -> Result<Self> {
+    impl_operator_parse!(pairs, Pipe);
+
     impl_operator_parse!(pairs, And);
     impl_operator_parse!(pairs, Or);
     impl_operator_parse!(pairs, Gt);
@@ -168,10 +181,11 @@ impl OperatorExprTransformer {
     impl_operator_parse!(pairs, Lte);
     impl_operator_parse!(pairs, Equal);
     impl_operator_parse!(pairs, NotEqual);
-    impl_operator_parse!(pairs, Add);
-    impl_operator_parse!(pairs, Sub);
+
     impl_operator_parse!(pairs, Mul);
-    impl_operator_parse!(pairs, Div);
+    impl_operator_parse!(pairs, Add);
+    impl_operator_parse!(pairs, Div, true);
+    impl_operator_parse!(pairs, Sub, true);
 
     Err(JsltError::InvalidInput(format!(
       "Could not evaluate the expession {pairs:#?}",
@@ -192,6 +206,11 @@ impl Transform for OperatorExprTransformer {
     let left = self
       .lhs
       .transform_value(Context::Borrowed(&context), input)?;
+
+    if matches!(self.operator, OperatorTransformer::Pipe) {
+      return self.rhs.transform_value(context, &left);
+    }
+
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
@@ -386,6 +405,7 @@ impl Transform for OperatorExprTransformer {
       },
       OperatorTransformer::Equal => Ok(Value::Bool(left == right)),
       OperatorTransformer::NotEqual => Ok(Value::Bool(left != right)),
+      OperatorTransformer::Pipe => unreachable!(),
     }
   }
 }
