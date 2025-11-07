@@ -85,7 +85,7 @@ pub trait Display {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result;
 }
 
-pub fn format<T>(value: &T) -> Formatted<T> {
+pub fn format<'a, T>(value: &'a T) -> Formatted<'a, T> {
   Formatted(value)
 }
 
