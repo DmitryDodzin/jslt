@@ -92,6 +92,7 @@ pub enum OperatorTransformer {
   Lte,
   Equal,
   NotEqual,
+  Pipe,
 }
 
 impl fmt::Display for OperatorTransformer {
@@ -109,6 +110,7 @@ impl fmt::Display for OperatorTransformer {
       OperatorTransformer::Lte => f.write_str("<="),
       OperatorTransformer::Equal => f.write_str("=="),
       OperatorTransformer::NotEqual => f.write_str("!="),
+      OperatorTransformer::Pipe => f.write_str("|"),
     }
   }
 }
@@ -169,6 +171,8 @@ macro_rules! impl_operator_parse {
 
 impl OperatorExprTransformer {
   pub fn from_inner_vec(mut pairs: Vec<Pair<Rule>>) -> Result<Self> {
+    impl_operator_parse!(pairs, Pipe);
+
     impl_operator_parse!(pairs, And);
     impl_operator_parse!(pairs, Or);
     impl_operator_parse!(pairs, Gt);
@@ -202,6 +206,11 @@ impl Transform for OperatorExprTransformer {
     let left = self
       .lhs
       .transform_value(Context::Borrowed(&context), input)?;
+
+    if matches!(self.operator, OperatorTransformer::Pipe) {
+      return self.rhs.transform_value(context, &left);
+    }
+
     let right = self.rhs.transform_value(context, input)?;
 
     match self.operator {
@@ -396,6 +405,7 @@ impl Transform for OperatorExprTransformer {
       },
       OperatorTransformer::Equal => Ok(Value::Bool(left == right)),
       OperatorTransformer::NotEqual => Ok(Value::Bool(left != right)),
+      OperatorTransformer::Pipe => unreachable!(),
     }
   }
 }

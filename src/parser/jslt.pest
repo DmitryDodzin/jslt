@@ -6,7 +6,7 @@ Expr = _{ OperatorExpr | ValueExpr }
 ValueExpr = _{ VariableDef | FunctionDef | IfStatement | Value }
 OperatorExpr = { ValueExpr ~ (Operator ~ ValueExpr)+ }
 
-Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual }
+Operator = _{ Add | Sub | Div | Mul | Gte | Gt | Lte | Lt | And | Or | Equal | NotEqual | Pipe }
 
 Add = { "+" }
 Sub = { "-" }
@@ -20,6 +20,7 @@ Equal = { "==" }
 NotEqual = { "!=" }
 And = { "and" }
 Or = { "or" }
+Pipe = { "|" }
 If = _{ "if" }
 For = _{ "for" }
 Def = _{ "def " }

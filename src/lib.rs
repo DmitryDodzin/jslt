@@ -231,6 +231,25 @@ mod tests {
   }
 
   #[test]
+  fn pipe_operator() -> Result<()> {
+    let jslt: Jslt = r#"
+    .menu.popup.menuitem | {
+      "Open" : .[0].onclick,
+      "Close" : .[1].onclick
+    } | {
+      "result" : .
+    }
+    "#
+    .parse()?;
+
+    let output = jslt.transform_value(&BASIC_INPUT)?;
+
+    assert_eq!(&output, BASIC_OUTPUT.deref());
+
+    Ok(())
+  }
+
+  #[test]
   fn object_for() -> Result<()> {
     let jslt: Jslt = r#"
     {
