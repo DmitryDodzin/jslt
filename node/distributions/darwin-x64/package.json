@@ -1,6 +1,6 @@
 {
   "name": "jslt-node-darwin-x64",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Jslt",
   "scripts": {
     "build": "cargo-cp-artifact -a cdylib jslt-node ./lib/darwin-x64.node -- cargo build -p jslt-node --message-format=json-render-diagnostics  --release --target x86_64-apple-darwin",
