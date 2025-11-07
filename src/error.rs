@@ -22,6 +22,8 @@ pub enum JsltError {
   #[error("Could not fit index into u64")]
   IndexOutOfRange,
   #[error(transparent)]
+  Unescape(unescaper::Error),
+  #[error(transparent)]
   SerdeJson(#[from] serde_json::Error),
   #[error("{0}")]
   RuntimeError(String),
