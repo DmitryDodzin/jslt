@@ -779,7 +779,7 @@ mod tests {
   #[case("1,2,3,4,5".into(), ";".into(), r#"["1,2,3,4,5"]"#)]
   #[case("null", ";".into(), "null")]
   #[case(",2".into(), ",".into(), r#"["", "2"]"#)]
-  // #[case("2,".into(), ",".into(), r#"["2"]"#)] TODO: maybe add the logic
+  #[case("22".into(), "".into(), r#"["2", "2"]"#)]
   fn function_split(
     #[case] left: Value,
     #[case] right: Value,
