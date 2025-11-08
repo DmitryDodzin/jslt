@@ -1,4 +1,4 @@
-use std::{fmt, fmt::Write as _, sync::Arc};
+use std::{borrow::Cow, fmt, fmt::Write as _, sync::Arc};
 
 use jslt_macro::expect_inner;
 use pest::iterators::{Pair, Pairs};
@@ -429,6 +429,25 @@ pub struct ForTransformer<B> {
   pub(super) condition: Option<ExprTransformer>,
 
   pub(super) output: Box<B>,
+}
+
+impl<B> ForTransformer<B> {
+  pub(super) fn source_iterator_extract<'a>(
+    source: &'a Value,
+  ) -> Result<Box<dyn Iterator<Item = Cow<'a, Value>> + 'a>> {
+    match &source {
+      Value::Null => Ok(Box::new(std::iter::empty())),
+      Value::Array(array) => Ok(Box::new(array.iter().map(Cow::Borrowed))),
+      Value::Object(object) => {
+        Ok(Box::new(object.into_iter().map(|(key, value)| {
+          Cow::Owned(serde_json::json!({ "key": key, "value": value }))
+        })))
+      }
+      _ => Err(JsltError::InvalidInput(format!(
+        "expectd array or object but got {source}"
+      ))),
+    }
+  }
 }
 
 impl<B> FromPairs for ForTransformer<B>
