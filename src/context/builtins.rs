@@ -409,6 +409,16 @@ pub fn capture(input: &Value, re: &Value) -> Result<Value> {
 pub fn split(value: &Value, re: &Value) -> Result<Value> {
   match (value, re) {
     (Value::Null, _) => Ok(Value::Null),
+
+    (Value::String(value), Value::String(empty)) if empty.is_empty() => Ok(Value::Array(
+      value
+        .split("")
+        .skip(1) // custom case where the patten is empty to match java behaviour
+        .take(value.len())
+        .map(str::to_owned)
+        .map(Value::String)
+        .collect(),
+    )),
     (Value::String(value), Value::String(re)) => {
       let re = Regex::new(re).map_err(|err| {
         JsltError::RuntimeError(format!("Unexpected error when parsing re: {err}"))
