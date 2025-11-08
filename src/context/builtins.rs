@@ -17,6 +17,7 @@ use crate::error::{JsltError, Result};
 #[static_function]
 pub fn contains(element: &Value, sequence: &Value) -> Result<Value> {
   match sequence {
+    Value::Null => Ok(Value::Bool(false)),
     Value::Array(array) => Ok(array.contains(element).into()),
     Value::Object(object) => Ok(
       element
