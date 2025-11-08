@@ -488,6 +488,7 @@ mod tests {
   #[case("\"no\"", "{\"no\" : false}", "true")]
   #[case("1", "{\"1\" : false}", "true")]
   #[case("\"ab\"", "\"abc\"", "true")]
+  #[case("\"ab\"", "null", "false")]
   fn function_contains(
     #[case] left: Value,
     #[case] right: Value,
