@@ -268,6 +268,17 @@ mod tests {
   }
 
   #[test]
+  fn object_for_null() -> Result<()> {
+    let jslt: Jslt = r#"{ for (null) .key: .value }"#.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, serde_json::json!({}));
+
+    Ok(())
+  }
+
+  #[test]
   fn object_trailing_comma() -> Result<()> {
     let jslt: Jslt = r#"
       {
@@ -390,6 +401,17 @@ mod tests {
         }]
       })
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn array_for_null() -> Result<()> {
+    let jslt: Jslt = r#"[ for (null) . ]"#.parse()?;
+
+    let output = jslt.transform_value(&Value::Null)?;
+
+    assert_eq!(output, serde_json::json!([]));
 
     Ok(())
   }

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt, fmt::Write as _};
+use std::{fmt, fmt::Write as _};
 
 use jslt_macro::expect_inner;
 use pest::iterators::Pairs;
@@ -31,7 +31,7 @@ impl FromPairs for ArrayTransformer {
         Rule::ArrayFor => {
           builder
             .inner
-            .push(ArrayTransformerInner::For(ArrayFor::from_pairs(
+            .push(ArrayTransformerInner::For(ArrayForTransformer::from_pairs(
               &mut pairs
                 .next()
                 .expect("is not empty because of peek")
@@ -59,38 +59,20 @@ impl Transform for ArrayTransformer {
         ArrayTransformerInner::Item(jslt) => {
           items.push(jslt.transform_value(Context::Borrowed(&context), input)?)
         }
-        ArrayTransformerInner::For(ArrayFor {
+        ArrayTransformerInner::For(ArrayForTransformer {
           source,
           condition,
           output,
         }) => {
           let source = source.transform_value(Context::Borrowed(&context), input)?;
 
-          let input_iter: Box<dyn Iterator<Item = Cow<Value>>> = if source.is_object() {
-            Box::new(
-              source
-                .as_object()
-                .expect("Should be object")
-                .into_iter()
-                .map(|(key, value)| Cow::Owned(serde_json::json!({ "key": key, "value": value }))),
-            )
-          } else {
-            Box::new(
-              source
-                .as_array()
-                .expect("Should be array")
-                .iter()
-                .map(Cow::Borrowed),
-            )
-          };
-
-          for input in input_iter {
-            if let Some(condition) = condition {
-              if !builtins::boolean_cast(
+          for input in ArrayForTransformer::source_iterator_extract(&source)? {
+            if let Some(condition) = condition
+              && !builtins::boolean_cast(
                 &condition.transform_value(Context::Borrowed(&context), &input)?,
-              ) {
-                continue;
-              }
+              )
+            {
+              continue;
             }
 
             items.push(output.transform_value(Context::Borrowed(&context), &input)?);
@@ -136,7 +118,7 @@ impl format::Display for ArrayTransformer {
 #[derive(Debug)]
 pub enum ArrayTransformerInner {
   Item(ExprTransformer),
-  For(ArrayFor),
+  For(ArrayForTransformer),
 }
 
 impl format::Display for ArrayTransformerInner {
@@ -148,4 +130,4 @@ impl format::Display for ArrayTransformerInner {
   }
 }
 
-pub type ArrayFor = ForTransformer<ExprTransformer>;
+pub type ArrayForTransformer = ForTransformer<ExprTransformer>;
